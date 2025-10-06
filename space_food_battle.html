@@ -153,8 +153,8 @@
     <div id="info">
         Click to shoot! Hit rockets for fireworks! Hit lunchbox for missiles! Press P to pause<br>
         Press B to activate Super Weapon! (2 uses remaining) | Press C to change formation (4 modes)<br>
-        Avoid rocket collisions! (5 hits = Game Over)<br>
-        Controls: A = Rotate Left, D = Rotate Right, S = Reset Rotation
+        Press SPACE for Homing Wingman (5s duration)! Avoid rocket collisions! (5 hits = Game Over)<br>
+        Controls: A = Rotate Left, D = Rotate Right, S = Reset Rotation, Mouse Wheel = Rotate
     </div>
     <div class="game-buttons">
         <button class="game-btn" id="pauseBtn" style="background: #4CAF50;">PAUSE</button>
@@ -379,6 +379,10 @@
             }
         ];
 
+        let homingWingmen = [];
+        let homingWingmanCooldown = 0;
+        const homingWingmanCooldownTime = 600; // 10 seconds cooldown
+
         // Wingmen formation
         let wingmenFormation = 0; // 0 = behind, 1 = vertical line, 2 = front guard
         updateWingmenFormation();
@@ -403,6 +407,7 @@
         // Music Control variables (keep existing ones)
         let musicPlaying = false;
         let musicVolume = 0.3; // 30% volume
+        let soundEnabled = true; // Master sound contro
 
         // Add track switching on music end
         bgMusic.addEventListener('ended', () => {
@@ -474,7 +479,7 @@
         }
 
         function playShootSound() {
-            if (!audioContext) return;
+            if (!audioContext || !soundEnabled) return; // Add soundEnabled check
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
             oscillator.connect(gainNode);
@@ -489,7 +494,7 @@
         }
 
         function playExplosionSound() {
-            if (!audioContext) return;
+            if (!audioContext || !soundEnabled) return; // Add soundEnabled check
             const oscillator1 = audioContext.createOscillator();
             const gainNode1 = audioContext.createGain();
             oscillator1.connect(gainNode1);
@@ -504,7 +509,7 @@
         }
 
         function playMissileSound() {
-            if (!audioContext) return;
+            if (!audioContext || !soundEnabled) return; // Add soundEnabled check
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
             oscillator.connect(gainNode);
@@ -519,7 +524,7 @@
         }
 
         function playLunchboxSound() {
-            if (!audioContext) return;
+            if (!audioContext || !soundEnabled) return; // Add soundEnabled check
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
             oscillator.connect(gainNode);
@@ -535,7 +540,7 @@
         }
 
         function playPowerUpSound() {
-            if (!audioContext) return;
+            if (!audioContext || !soundEnabled) return; // Add soundEnabled check
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
             oscillator.connect(gainNode);
@@ -552,7 +557,7 @@
 
         // New function for spaceship hit sound
         function playSpaceshipHitSound() {
-            if (!audioContext) return;
+            if (!audioContext || !soundEnabled) return; // Add soundEnabled check
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
             oscillator.connect(gainNode);
@@ -567,7 +572,7 @@
         }
 
         function playSuperWeaponSound() {
-            if (!audioContext) return;
+            if (!audioContext || !soundEnabled) return; // Add soundEnabled check
 
             // Phase 1: Deep charging rumble (0-300ms)
             const lowRumble = audioContext.createOscillator();
@@ -638,7 +643,7 @@
 
         //Play Space Rock hit sound
         function playRockHitSound() {
-            if (!audioContext) return;
+            if (!audioContext || !soundEnabled) return; // Add soundEnabled check
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
             oscillator.connect(gainNode);
@@ -654,7 +659,7 @@
 
         // Play formation change sound
         function playFormationChangeSound() {
-            if (!audioContext) return;
+            if (!audioContext || !soundEnabled) return; // Add soundEnabled check
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
             oscillator.connect(gainNode);
@@ -671,7 +676,7 @@
 
         // play Wingman Destroyed Sound
         function playWingmanDestroyedSound() {
-            if (!audioContext) return;
+            if (!audioContext || !soundEnabled) return; // Add soundEnabled check
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
             oscillator.connect(gainNode);
@@ -687,7 +692,7 @@
 
         // play ding sound
         function playDingSound() {
-            if (!audioContext) return;
+            if (!audioContext || !soundEnabled) return; // Add soundEnabled check
 
             // Create a pleasant "ding" sound with harmonics
             const oscillator1 = audioContext.createOscillator();
@@ -720,18 +725,20 @@
 
         // Control background music 
         function toggleMusic() {
-            if (musicPlaying) {
-                bgMusic.pause();
-                musicPlaying = false;
-            } else {
+            soundEnabled = !soundEnabled; // Toggle master sound
+
+            if (soundEnabled) {
                 bgMusic.volume = musicVolume;
                 bgMusic.play().catch(e => console.log('Audio play failed:', e));
                 musicPlaying = true;
+            } else {
+                bgMusic.pause();
+                musicPlaying = false;
             }
         }
 
         function startMusic() {
-            if (!musicPlaying) {
+            if (!musicPlaying && soundEnabled) {
                 bgMusic.volume = musicVolume;
                 bgMusic.play().catch(e => console.log('Audio play failed:', e));
                 musicPlaying = true;
@@ -1488,6 +1495,286 @@
             }
         }
 
+        // Homing Wingman
+        class HomingWingman {
+            constructor(startX, startY) {
+                this.x = startX;
+                this.y = startY;
+                this.vx = 0;
+                this.vy = 0;
+                this.speed = 6;
+                this.target = null;
+                this.rocketsHit = 0;
+                this.targetHits = 5; // Target goal (may not reach it)
+                this.trail = [];
+                this.rotation = 0;
+                this.exploding = false;
+                this.explosionTimer = 0;
+                this.searchRadius = 400;
+                this.lifetime = 300; // 5 seconds at 60fps (5 * 60 = 300 frames)
+                this.maxLifetime = 300;
+            }
+
+            findNearestRocket() {
+                let nearest = null;
+                let minDist = this.searchRadius;
+
+                rockets.forEach(rocket => {
+                    const dist = Math.hypot(rocket.x - this.x, rocket.y - this.y);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearest = rocket;
+                    }
+                });
+
+                return nearest;
+            }
+
+            update() {
+                this.lifetime--;
+
+                // Add to trail
+                this.trail.push({ x: this.x, y: this.y });
+                if (this.trail.length > 20) {
+                    this.trail.shift();
+                }
+
+                if (!this.exploding) {
+                    // Check if lifetime expired - AUTO EXPLODE after 5 seconds
+                    if (this.lifetime <= 0) {
+                        this.exploding = true;
+                        this.explosionTimer = 60; // 1 second explosion
+                        playSuperWeaponSound();
+
+                        // Create explosion effect
+                        for (let i = 0; i < 80; i++) {
+                            fireworks.push(new Particle(this.x, this.y));
+                        }
+
+                        // Show completion message
+                        const hitText = this.rocketsHit >= this.targetHits
+                            ? 'MISSION COMPLETE!'
+                            : `TIME UP! (${this.rocketsHit}/${this.targetHits} HITS)`;
+
+                        setTimeout(() => {
+                            for (let frame = 0; frame < 90; frame++) {
+                                setTimeout(() => {
+                                    ctx.font = 'bold 32px Arial';
+                                    ctx.fillStyle = `hsl(${180 + (frame * 4) % 180}, 100%, 70%)`;
+                                    ctx.strokeStyle = 'white';
+                                    ctx.lineWidth = 2;
+                                    ctx.textAlign = 'center';
+                                    ctx.strokeText(`HOMING WINGMAN: ${hitText}`, canvas.width / 2, canvas.height / 2 - 100);
+                                    ctx.fillText(`HOMING WINGMAN: ${hitText}`, canvas.width / 2, canvas.height / 2 - 100);
+                                }, frame * 16);
+                            }
+                        }, 0);
+
+                        return true; // Continue to explosion animation
+                    }
+
+                    // Find target if we don't have one or if current target is gone
+                    if (!this.target || rockets.indexOf(this.target) === -1) {
+                        this.target = this.findNearestRocket();
+                    }
+
+                    if (this.target) {
+                        // Homing behavior
+                        const dx = this.target.x - this.x;
+                        const dy = this.target.y - this.y;
+                        const dist = Math.hypot(dx, dy);
+
+                        if (dist > 0) {
+                            this.vx = (dx / dist) * this.speed;
+                            this.vy = (dy / dist) * this.speed;
+                            this.rotation = Math.atan2(dy, dx) + Math.PI / 2;
+                        }
+
+                        // Check collision with target
+                        if (dist < 30) {
+                            createFirework(this.target.x, this.target.y);
+                            playExplosionSound();
+
+                            const index = rockets.indexOf(this.target);
+                            if (index > -1) {
+                                rockets.splice(index, 1);
+                                this.rocketsHit++;
+                                score += 2; // Bonus points
+                            }
+
+                            // Clear target to find next one
+                            this.target = null;
+                        }
+                    } else {
+                        // No target available, patrol slowly
+                        this.vx *= 0.98;
+                        this.vy *= 0.98;
+
+                        // Move in small circles while searching
+                        this.rotation += 0.05;
+                        this.vx += Math.sin(this.rotation) * 0.3;
+                        this.vy -= Math.cos(this.rotation) * 0.3;
+                    }
+
+                    this.x += this.vx;
+                    this.y += this.vy;
+
+                    // Keep on screen (bounce off edges)
+                    if (this.x < 30) {
+                        this.x = 30;
+                        this.vx = Math.abs(this.vx);
+                    }
+                    if (this.x > canvas.width - 30) {
+                        this.x = canvas.width - 30;
+                        this.vx = -Math.abs(this.vx);
+                    }
+                    if (this.y < 30) {
+                        this.y = 30;
+                        this.vy = Math.abs(this.vy);
+                    }
+                    if (this.y > canvas.height - 30) {
+                        this.y = canvas.height - 30;
+                        this.vy = -Math.abs(this.vy);
+                    }
+                } else {
+                    // Explosion animation
+                    this.explosionTimer--;
+                    if (this.explosionTimer <= 0) {
+                        return false; // Signal for removal
+                    }
+                }
+
+                return true; // Continue existing
+            }
+
+            draw() {
+                if (this.exploding) {
+                    // Draw explosion effect
+                    const progress = 1 - (this.explosionTimer / 60);
+                    const radius = 40 + (progress * 150);
+
+                    // Multiple explosion rings
+                    for (let i = 0; i < 3; i++) {
+                        ctx.globalAlpha = (1 - progress) * (1 - i * 0.3);
+                        const ringRadius = radius + (i * 30);
+
+                        ctx.fillStyle = i % 2 === 0 ? '#ff6600' : '#ffcc00';
+                        ctx.shadowColor = '#ff0000';
+                        ctx.shadowBlur = 40;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, ringRadius, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                    ctx.shadowBlur = 0;
+                    ctx.globalAlpha = 1;
+                    return;
+                }
+
+                // Draw trail
+                ctx.strokeStyle = 'rgba(0, 255, 200, 0.6)';
+                ctx.lineWidth = 5;
+                ctx.shadowColor = '#00ffcc';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                for (let i = 0; i < this.trail.length; i++) {
+                    const point = this.trail[i];
+                    const alpha = i / this.trail.length;
+                    ctx.globalAlpha = alpha * 0.6;
+                    if (i === 0) {
+                        ctx.moveTo(point.x, point.y);
+                    } else {
+                        ctx.lineTo(point.x, point.y);
+                    }
+                }
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+                ctx.shadowBlur = 0;
+
+                // Draw homing wingman
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+
+                // Pulsing glow effect - faster as time runs out
+                const timeLeft = this.lifetime / this.maxLifetime;
+                const pulseSpeed = 0.01 + (1 - timeLeft) * 0.05; // Pulse faster when time is low
+                const pulse = Math.sin(Date.now() * pulseSpeed) * 0.3 + 0.7;
+
+                // Change color as time runs out (cyan -> yellow -> red)
+                let glowColor = '#00ffcc';
+                if (timeLeft < 0.3) {
+                    glowColor = '#ff6600'; // Red when < 1.5 seconds
+                } else if (timeLeft < 0.6) {
+                    glowColor = '#ffcc00'; // Yellow when < 3 seconds
+                }
+
+                ctx.shadowColor = glowColor;
+                ctx.shadowBlur = 25 * pulse;
+
+                // Main body - larger triangle
+                ctx.fillStyle = glowColor;
+                ctx.beginPath();
+                ctx.moveTo(0, -20);
+                ctx.lineTo(-12, 12);
+                ctx.lineTo(12, 12);
+                ctx.closePath();
+                ctx.fill();
+
+                // Inner glow
+                ctx.fillStyle = '#ffffff';
+                ctx.globalAlpha = 0.5;
+                ctx.beginPath();
+                ctx.moveTo(0, -15);
+                ctx.lineTo(-8, 8);
+                ctx.lineTo(8, 8);
+                ctx.closePath();
+                ctx.fill();
+                ctx.globalAlpha = 1;
+
+                // Cockpit
+                ctx.fillStyle = '#ffff00';
+                ctx.beginPath();
+                ctx.arc(0, -5, 5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Wing engines
+                ctx.fillStyle = '#00aa88';
+                ctx.fillRect(-14, 5, 5, 10);
+                ctx.fillRect(9, 5, 5, 10);
+
+                // Engine thrust effect
+                if (this.target) {
+                    ctx.fillStyle = 'rgba(255, 150, 0, 0.7)';
+                    ctx.fillRect(-13, 15, 3, 8);
+                    ctx.fillRect(10, 15, 3, 8);
+                }
+
+                ctx.restore();
+                ctx.shadowBlur = 0;
+
+                // Draw kill counter and timer above wingman
+                ctx.save();
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+
+                // Kill counter
+                ctx.fillStyle = this.rocketsHit >= 3 ? '#ffff00' : '#ffffff';
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 3;
+                ctx.strokeText(`${this.rocketsHit}/${this.targetHits}`, this.x, this.y - 35);
+                ctx.fillText(`${this.rocketsHit}/${this.targetHits}`, this.x, this.y - 35);
+
+                // Timer countdown
+                const secondsLeft = Math.ceil(this.lifetime / 60);
+                ctx.fillStyle = secondsLeft <= 1 ? '#ff0000' : secondsLeft <= 2 ? '#ffaa00' : '#00ff00';
+                ctx.strokeText(`${secondsLeft}s`, this.x, this.y - 50);
+                ctx.fillText(`${secondsLeft}s`, this.x, this.y - 50);
+
+                ctx.restore();
+            }
+        }
+
 
         function createFirework(x, y) {
             for (let i = 0; i < 30; i++) {
@@ -1780,6 +2067,9 @@
                 }
                 w.lastShotTime = 0;
             });
+
+            homingWingmen = [];
+            homingWingmanCooldown = 0;
         }
 
         function togglePause() {
@@ -1798,7 +2088,7 @@
         document.getElementById('musicBtn').addEventListener('click', () => {
             toggleMusic();
             const btn = document.getElementById('musicBtn');
-            btn.textContent = musicPlaying ? '🔊 MUSIC' : '🔇 MUSIC';
+            btn.textContent = soundEnabled ? '🔊 SOUND' : '🔇 MUTED';
         });
         document.getElementById('quitBtn').addEventListener('click', () => {
             backToMainMenu();
@@ -1829,6 +2119,23 @@
             if (e.key === 's' || e.key === 'S') {
                 spaceship.rotation = 0;
             }
+            if (e.code === 'Space' && gameState === 'playing') {
+                e.preventDefault(); // Prevent page scroll
+
+                if (homingWingmanCooldown <= 0) {
+                    // Launch homing wingman from spaceship position
+                    homingWingmen.push(new HomingWingman(spaceship.x, spaceship.y));
+                    homingWingmanCooldown = homingWingmanCooldownTime;
+
+                    initAudio();
+                    playPowerUpSound();
+
+                    // Visual effect
+                    for (let i = 0; i < 20; i++) {
+                        fireworks.push(new Particle(spaceship.x, spaceship.y));
+                    }
+                }
+            }
         });
 
         document.addEventListener('keyup', (e) => {
@@ -1840,6 +2147,37 @@
                 keys.d = false;
             }
         });
+
+        // Mouse wheel rotation control
+        canvas.addEventListener('wheel', (e) => {
+            if (gameState === 'playing') {
+                e.preventDefault();
+
+                const delta = Math.sign(e.deltaY);
+                const wheelRotationSpeed = 0.12;
+
+                if (delta > 0) {
+                    spaceship.rotation += wheelRotationSpeed;
+                } else if (delta < 0) {
+                    spaceship.rotation -= wheelRotationSpeed;
+                }
+
+                // Add soundEnabled check here too
+                if (audioContext && soundEnabled) {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(400 + (delta * 100), audioContext.currentTime);
+                    gainNode.gain.setValueAtTime(0.05, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.05);
+                }
+            }
+        });
+
 
         // Screen Management Functions
         function showScreen(screenId) {
@@ -1920,6 +2258,7 @@
                 totalScore += levelScore;
                 showGameOver(true); // true = won the game
                 gameState = 'gameOver';
+                gameLoop();
                 return;
             }
 
@@ -2248,6 +2587,22 @@
                     }
                 }
 
+                // Update cooldown
+                if (homingWingmanCooldown > 0) {
+                    homingWingmanCooldown--;
+                }
+
+                // Update homing wingmen
+                for (let i = homingWingmen.length - 1; i >= 0; i--) {
+                    const hw = homingWingmen[i];
+                    const shouldContinue = hw.update();
+                    hw.draw();
+
+                    if (!shouldContinue) {
+                        homingWingmen.splice(i, 1);
+                    }
+                }
+
                 // Check spaceship collision with wingman boosts
                 for (let i = wingmanBoosts.length - 1; i >= 0; i--) {
                     const boost = wingmanBoosts[i];
@@ -2569,13 +2924,12 @@
                         }
 
                         // Calculate target position behind leader
-                        const followDistance = 45; // Distance between each wingman
+                        const followDistance = 45;
                         const dx = w.x - leaderX;
                         const dy = w.y - leaderY;
                         const currentDist = Math.hypot(dx, dy);
 
                         if (currentDist > 0) {
-                            // Position behind leader at fixed distance
                             w.targetX = leaderX + (dx / currentDist) * followDistance;
                             w.targetY = leaderY + (dy / currentDist) * followDistance;
                         } else {
@@ -2583,8 +2937,7 @@
                             w.targetY = leaderY + followDistance;
                         }
 
-                        // Smooth follow with slight delay for snake effect
-                        const followSpeed = 0.12 - (index * 0.015); // Each wingman slightly slower
+                        const followSpeed = 0.12 - (index * 0.015);
                         w.x += (w.targetX - w.x) * followSpeed;
                         w.y += (w.targetY - w.y) * followSpeed;
                     } else if (w.orbitMode) {
@@ -2612,18 +2965,34 @@
                         w.y += (w.targetY - w.y) * 0.15;
                     }
 
-                    if (rockets.length > 0 && Date.now() - w.lastShotTime >= w.fireRate) {
-                        w.lastShotTime = Date.now();
+                    // ENHANCED SHOOTING LOGIC - Inherit machine gun state
+                    if (rockets.length > 0) {
+                        const currentTime = Date.now();
 
-                        if (w.weaponType === 'bullet') {
-                            bullets.push(new Bullet(w.x, w.y, spaceship.rotation));
-                            playShootSound();
-                        } else if (w.weaponType === 'spread') {
-                            const spreadAngles = [-0.3, -0.15, 0, 0.15, 0.3];
-                            spreadAngles.forEach(angle => {
-                                spreadBullets.push(new SpreadBullet(w.x, w.y, spaceship.rotation, angle));
-                            });
-                            playShootSound();
+                        // Determine fire rate based on spaceship's machine gun state
+                        let effectiveFireRate = w.fireRate;
+                        let shouldShootRapidly = false;
+
+                        // If spaceship is in machine gun mode (weaponLevel 3 and timer active)
+                        if (weaponLevel === 3 && machineGunTimer > 0) {
+                            effectiveFireRate = machineGunRate; // Match spaceship's rapid fire rate (100ms)
+                            shouldShootRapidly = true;
+                        }
+
+                        // Check if enough time has passed for next shot
+                        if (currentTime - w.lastShotTime >= effectiveFireRate) {
+                            w.lastShotTime = currentTime;
+
+                            if (w.weaponType === 'bullet') {
+                                bullets.push(new Bullet(w.x, w.y, spaceship.rotation));
+                                playShootSound();
+                            } else if (w.weaponType === 'spread') {
+                                const spreadAngles = [-0.3, -0.15, 0, 0.15, 0.3];
+                                spreadAngles.forEach(angle => {
+                                    spreadBullets.push(new SpreadBullet(w.x, w.y, spaceship.rotation, angle));
+                                });
+                                playShootSound();
+                            }
                         }
                     }
                 });
@@ -2749,7 +3118,7 @@
 
             // Draw wingmen with weapon-specific colors
             wingmen.forEach(w => {
-                if (!w.active) return; // Skip inactive wingmen
+                if (!w.active) return;
 
                 ctx.save();
                 ctx.translate(w.x, w.y);
@@ -2757,9 +3126,13 @@
 
                 if (invulnerable && Math.floor(invulnerabilityTimer / 10) % 2 === 0) ctx.globalAlpha = 0.3;
 
-                // Different colors based on weapon type
+                // Different colors based on weapon type and machine gun state
                 let wingmanColor = '#fa0';
-                if (w.weaponType === 'spread') {
+
+                // Check if in machine gun mode (inherited from spaceship)
+                if (weaponLevel === 3 && machineGunTimer > 0) {
+                    wingmanColor = '#ff00ff'; // Purple - same as spaceship in machine gun mode
+                } else if (w.weaponType === 'spread') {
                     wingmanColor = '#f0f';
                 } else if (w.fireRate < 300) {
                     wingmanColor = '#4af';
@@ -2778,7 +3151,18 @@
                 ctx.arc(0, -3, 2, 0, Math.PI * 2);
                 ctx.fill();
 
-                if (w.weaponType === 'spread') {
+                // Enhanced weapon visualization
+                if (weaponLevel === 3 && machineGunTimer > 0) {
+                    // Machine gun mode - triple barrels with glow
+                    ctx.fillStyle = '#ff00ff';
+                    ctx.fillRect(-6, 5, 2, 5);
+                    ctx.fillRect(-2, 5, 2, 5);
+                    ctx.fillRect(2, 5, 2, 5);
+                    ctx.shadowColor = '#ff00ff';
+                    ctx.shadowBlur = 10;
+                    ctx.fillRect(-6, 5, 10, 5);
+                    ctx.shadowBlur = 0;
+                } else if (w.weaponType === 'spread') {
                     ctx.fillStyle = '#f0f';
                     ctx.fillRect(-8, 5, 2, 5);
                     ctx.fillRect(-3, 5, 2, 5);
@@ -2800,7 +3184,6 @@
                 ctx.restore();
                 ctx.globalAlpha = 1;
             });
-
             // Draw timer
             ctx.font = 'bold 48px Arial';
             ctx.fillStyle = gameTimer <= 10 ? 'red' : 'white';
@@ -2851,6 +3234,16 @@
                 ctx.fillText(`Super Weapon: DEPLETED`, 10, canvas.height - 10);
             }
 
+            // Display homing wingman cooldown
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'left';
+            if (homingWingmanCooldown > 0) {
+                ctx.fillStyle = 'gray';
+                ctx.fillText(`Homing Wingman (SPACE): ${Math.ceil(homingWingmanCooldown / 60)}s`, 10, canvas.height - 40);
+            } else {
+                ctx.fillStyle = '#00ffcc';
+                ctx.fillText(`Homing Wingman (SPACE): READY`, 10, canvas.height - 40);
+            }
             // Weapon status
             let weaponText = 'Single Gun';
             if (weaponLevel === 2) weaponText = 'Dual Guns';
