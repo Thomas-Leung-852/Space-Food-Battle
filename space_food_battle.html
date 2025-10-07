@@ -252,6 +252,20 @@
         <button class="menu-button secondary" onclick="backToMainMenu()">MAIN MENU</button>
     </div>
 
+    <!-- Game Continue Screen  -->
+    <div id="continueScreen" class="screen">
+        <h2>CONTINUE?</h2>
+        <div id="continueStats" class="stats-display">
+            <h3 id="continueReason">Too many hits!</h3>
+            <p style="font-size: 32px; color: #ffaa00;">Current Score: <span id="continueScore">0</span></p>
+            <p style="font-size: 28px; color: #00ff88;">Level: <span id="continueLevel">1</span></p>
+            <p style="font-size: 24px; color: #ffff00;">Continues Remaining: <span id="continuesLeft">3</span></p>
+        </div>
+        <button class="menu-button" onclick="useContinue()">CONTINUE</button>
+        <button class="menu-button secondary" onclick="giveUp()">GIVE UP</button>
+    </div>
+
+
     <canvas id="game"></canvas>
 
     <script>
@@ -267,9 +281,31 @@
         canvas.height = window.innerHeight;
 
         // Preload background image
-        const bgImg = new Image();
-        bgImg.src = 'https://cdn.stocksnap.io/img-thumbs/960w/moon-craters_OHYSVCPGJK.jpg';
+        const bgImages = [
+            new Image(),
+            new Image(),
+            new Image()
+        ];
 
+        for (i = 0; i < bgImages.length; i++) {
+            bgImages[0].crossOrigin = "anonymous";
+        }
+        bgImages[0].src = 'https://cdn.pixabay.com/photo/2017/03/27/14/31/stars-2179083_1280.jpg';
+        bgImages[1].src = 'https://cdn.pixabay.com/photo/2020/01/28/11/14/galaxy-4799471_1280.jpg';
+        bgImages[2].src = 'https://cdn.pixabay.com/photo/2016/10/20/18/35/earth-1756274_1280.jpg';
+
+        const ufoImage = new Image();
+        ufoImage.src = 'https://opengameart.org/sites/default/files/styles/medium/public/Asteroid%20Brown.png'; // Free UFO image 
+
+        const asteroidImage = new Image();
+        asteroidImage.src = 'https://opengameart.org/sites/default/files/styles/medium/public/Asteroid%20Brown.png'; // Free asteroid image
+
+        // Add to game state variables (around line 90):
+        let continuesRemaining = 3;
+        let continuesUsed = 0;
+        let debugMode = false;
+        let ufos = [];
+        let enemyBullets = [];
         let rockets = [];
         let bullets = [];
         let lasers = [];
@@ -1031,6 +1067,129 @@
             }
         }
 
+        // UFO
+        class UFO {
+            constructor() {
+                // Spawn from sides or top
+                const side = Math.floor(Math.random() * 3); // 0=left, 1=right, 2=top
+
+                if (side === 0) {
+                    this.x = -50;
+                    this.y = Math.random() * (canvas.height * 0.6);
+                    this.vx = 1 + Math.random() * 2;
+                } else if (side === 1) {
+                    this.x = canvas.width + 50;
+                    this.y = Math.random() * (canvas.height * 0.6);
+                    this.vx = -(1 + Math.random() * 2);
+                } else {
+                    this.x = Math.random() * canvas.width;
+                    this.y = -50;
+                    this.vx = (Math.random() - 0.5) * 2;
+                }
+
+                this.vy = 0.5 + Math.random() * 1.5;
+                this.size = 40;
+                this.health = 3;
+                this.hitFlash = 0;
+                this.rotation = 0;
+                this.rotationSpeed = 0.02;
+                this.shootTimer = 0;
+                this.shootInterval = 120 + Math.random() * 120; // Shoot every 2-4 seconds
+                this.sinWave = Math.random() * Math.PI * 2; // For wave movement
+            }
+
+            update() {
+                // Sine wave horizontal movement
+                this.sinWave += 0.03;
+                this.x += this.vx + Math.sin(this.sinWave) * 0.5;
+                this.y += this.vy;
+                this.rotation += this.rotationSpeed;
+
+                if (this.hitFlash > 0) this.hitFlash--;
+
+                // Shooting behavior
+                this.shootTimer++;
+                if (this.shootTimer >= this.shootInterval && this.y > 50 && this.y < canvas.height - 100) {
+                    this.shootTimer = 0;
+                    this.shoot();
+                }
+            }
+
+            shoot() {
+                // Shoot at player's position
+                const dx = spaceship.x - this.x;
+                const dy = spaceship.y - this.y;
+                const angle = Math.atan2(dy, dx);
+
+                // Create enemy bullet
+                enemyBullets.push({
+                    x: this.x,
+                    y: this.y,
+                    vx: Math.cos(angle) * 3,
+                    vy: Math.sin(angle) * 3,
+                    size: 5
+                });
+
+                if (soundEnabled) playMissileSound();
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+
+                if (this.hitFlash > 0) {
+                    ctx.shadowColor = '#ffffff';
+                    ctx.shadowBlur = 20;
+                }
+
+                // Draw UFO image if loaded, otherwise draw simple UFO
+                if (ufoImage.complete && ufoImage.naturalWidth > 0) {
+                    const scale = this.size / 50;// Adjust size 
+                    ctx.globalAlpha = this.hitFlash > 0 ? 0.5 : 1;
+                    ctx.drawImage(ufoImage, -this.size, -this.size, this.size * 2, this.size * 2);
+                    ctx.globalAlpha = 1;
+                } else {
+                    // Fallback: Draw simple UFO
+                    if (this.hitFlash > 0) {
+                        ctx.fillStyle = '#ffffff';
+                    } else {
+                        ctx.fillStyle = '#00ff88';
+                    }
+
+                    // Dome
+                    ctx.beginPath();
+                    ctx.ellipse(0, -10, this.size * 0.4, this.size * 0.3, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Body
+                    ctx.fillStyle = this.hitFlash > 0 ? '#ffff00' : '#44ffaa';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, this.size * 0.6, this.size * 0.2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Lights
+                    for (let i = 0; i < 5; i++) {
+                        const angle = (Math.PI * 2 * i) / 5;
+                        const lx = Math.cos(angle) * this.size * 0.5;
+                        const ly = Math.sin(angle) * this.size * 0.15;
+                        ctx.fillStyle = i % 2 === 0 ? '#ff0000' : '#0000ff';
+                        ctx.beginPath();
+                        ctx.arc(lx, ly, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                // Health indicator
+                ctx.fillStyle = '#ff0000';
+                for (let i = 0; i < this.health; i++) {
+                    ctx.fillRect(-15 + i * 10, -this.size - 10, 8, 3);
+                }
+
+                ctx.restore();
+                ctx.shadowBlur = 0;
+            }
+        }
 
         //Power up
         class PowerUp {
@@ -2033,7 +2192,7 @@
             spaceshipHits = 0; // Reset spaceship hits
             gameState = 'playing';
             gameOverTime = 0;
-            gameTimer = 60;
+            gameTimer = debugMode ? 10 : 60;
             gameStartTime = Date.now();
             pausedTime = 0;
             missileMode = false;
@@ -2070,6 +2229,11 @@
 
             homingWingmen = [];
             homingWingmanCooldown = 0;
+
+            //UFO 
+            ufos = [];
+            enemyBullets = [];
+
         }
 
         function togglePause() {
@@ -2136,6 +2300,28 @@
                     }
                 }
             }
+            // Toggle debug mode with Ctrl+Shift+D
+            //if (e.ctrlKey && e.shiftKey && (e.key === '0' || e.key === 'D')) {
+            if (e.ctrlKey && e.shiftKey && (e.key === '0' || e.key === 'D')) {
+                debugMode = !debugMode;
+                console.log(`Debug Mode: ${debugMode ? 'ON' : 'OFF'}`);
+
+                // Show visual feedback
+                setTimeout(() => {
+                    for (let frame = 0; frame < 60; frame++) {
+                        setTimeout(() => {
+                            ctx.font = 'bold 32px Arial';
+                            ctx.fillStyle = debugMode ? '#00ff00' : '#ff0000';
+                            ctx.strokeStyle = 'white';
+                            ctx.lineWidth = 2;
+                            ctx.textAlign = 'center';
+                            const text = debugMode ? 'DEBUG MODE: ON' : 'DEBUG MODE: OFF';
+                            ctx.strokeText(text, canvas.width / 2, 100);
+                            ctx.fillText(text, canvas.width / 2, 100);
+                        }, frame * 16);
+                    }
+                }, 0);
+            }
         });
 
         document.addEventListener('keyup', (e) => {
@@ -2200,9 +2386,11 @@
         function startGame() {
             currentLevel = 1;
             totalScore = 0;
+            continuesRemaining = 3;
             showScreen('playing');
             resetGame();
             gameState = 'playing';
+            showLevelIntro();
         }
 
         function showInstructions() {
@@ -2236,6 +2424,7 @@
             <h3>All Levels Complete!</h3>
             <p style="font-size: 32px; color: #ffaa00;">Final Score: ${totalScore}</p>
             <p style="font-size: 28px; color: #00ff88;">Level: ${currentLevel}</p>
+            <p style="font-size: 24px; color: #ffff00;">Continues Used: ${continuesUsed}/3</p>
             <p style="font-size: 24px;">You are a Space Ace! 🚀</p>
         `;
             } else {
@@ -2246,9 +2435,88 @@
             <h3>${reason}</h3>
             <p style="font-size: 32px; color: #ffaa00;">Final Score: ${totalScore}</p>
             <p style="font-size: 28px; color: #ff6b6b;">Level: ${currentLevel}</p>
+            <p style="font-size: 24px; color: #ffff00;">Continues Used: ${continuesUsed}/3</p>
         `;
             }
         }
+
+        function showContinueOrGameOver(reason) {
+            if (continuesRemaining > 0) {
+                // Show continue screen
+                showScreen('continueScreen');
+                gameState = 'continue';
+
+                // Update continue screen info
+                document.getElementById('continueScore').textContent = totalScore;
+                document.getElementById('continueLevel').textContent = currentLevel;
+                document.getElementById('continuesLeft').textContent = continuesRemaining;
+
+                const reasonText = reason === 'hits'
+                    ? 'Too many hits!'
+                    : 'Too many rockets missed!';
+                document.getElementById('continueReason').textContent = reasonText;
+            } else {
+                // No continues left, game over
+                showGameOver(false);
+                gameState = 'gameOver';
+            }
+        }
+
+        function useContinue() {
+            if (continuesRemaining > 0) {
+                continuesRemaining--;
+                continuesUsed++;
+
+                // Reset some stats for the continue
+                spaceshipHits = 0;
+                missedRockets = 0;
+                invulnerable = true;
+                invulnerabilityTimer = 180; // 3 seconds of invincibility after continue
+
+                // Clear all enemies on screen for a fresh start
+                rockets = [];
+                spaceRocks = [];
+                ufos = [];
+                enemyBullets = [];
+
+                // Give some bonus items
+                superWeaponUses = Math.min(superWeaponUses + 1, 5); // Add 1 super weapon
+
+                // Resume game
+                showScreen('playing');
+                gameState = 'playing';
+                gameStartTime = Date.now(); // Reset timer
+
+                // Show continue message
+                setTimeout(() => {
+                    for (let frame = 0; frame < 90; frame++) {
+                        setTimeout(() => {
+                            ctx.font = 'bold 36px Arial';
+                            ctx.fillStyle = `hsl(${120 + (frame * 3) % 120}, 100%, 70%)`;
+                            ctx.strokeStyle = 'white';
+                            ctx.lineWidth = 2;
+                            ctx.textAlign = 'center';
+                            ctx.strokeText(`CONTINUE! (${continuesRemaining} LEFT)`, canvas.width / 2, canvas.height / 2 - 100);
+                            ctx.fillText(`CONTINUE! (${continuesRemaining} LEFT)`, canvas.width / 2, canvas.height / 2 - 100);
+                        }, frame * 16);
+                    }
+                }, 0);
+
+                if (musicPlaying) bgMusic.play();
+
+                gameLoop();
+            }
+        }
+
+        function giveUp() {
+            // Player chose not to continue
+            showGameOver(false);
+            gameState = 'gameOver';
+            gameLoop();
+        }
+
+
+
 
         function nextLevel() {
             currentLevel++;
@@ -2268,35 +2536,84 @@
             gameState = 'playing';
 
             // Increase difficulty per level
-            if (currentLevel === 2) {
-                rocketSpawnRate = 0.025; // Level 2: Medium difficulty
-            } else if (currentLevel === 3) {
-                rocketSpawnRate = 0.035; // Level 3: Hard difficulty
-            }
+            rocketSpawnRate = 0.018 + (currentLevel - 1) * 0.004; // 0.018 -> 0.054 by level 10
+
+            showLevelIntro();
 
             if (musicPlaying) bgMusic.play();
             gameLoop();
         }
 
+        function showLevelIntro() {
+            const introMessages = {
+                1: 'LEVEL 1: Incoming Rockets!',
+                2: 'LEVEL 2: Space Rocks Detected!',
+                3: 'LEVEL 3: UFO Alert!',
+                4: 'LEVEL 4: Intensifying!',
+                5: 'LEVEL 5: Half Way There!',
+                6: 'LEVEL 6: Heavy Resistance!',
+                7: 'LEVEL 7: Critical Zone!',
+                8: 'LEVEL 8: Almost There!',
+                9: 'LEVEL 9: Final Push!',
+                10: 'LEVEL 10: FINAL BATTLE!'
+            };
+
+            const message = introMessages[currentLevel] || `LEVEL ${currentLevel}`;
+
+            setTimeout(() => {
+                for (let frame = 0; frame < 120; frame++) {
+                    setTimeout(() => {
+                        ctx.font = 'bold 48px Arial';
+                        ctx.fillStyle = `hsl(${(frame * 3) % 360}, 100%, 70%)`;
+                        ctx.strokeStyle = 'white';
+                        ctx.lineWidth = 3;
+                        ctx.textAlign = 'center';
+                        ctx.strokeText(message, canvas.width / 2, canvas.height / 2);
+                        ctx.fillText(message, canvas.width / 2, canvas.height / 2);
+                    }, frame * 16);
+                }
+            }, 0);
+        }
 
         function gameLoop() {
             ctx.fillStyle = 'rgba(0, 5, 15, 0.1)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             // Draw background with scaling effect (approaching the moon)
-            if (bgImg.complete && bgImg.naturalWidth > 0) {
-                ctx.globalAlpha = 0.8;
+            // Same cycling but with progressive color tints
+            const bgIndex = (currentLevel - 1) % bgImages.length;
+            const currentBgImg = bgImages[bgIndex];
 
-                // Calculate scale based on elapsed time (1.0 to 1.5 over 60 seconds)
-                const timeProgress = Math.min(1, (60 - gameTimer) / 60); // 0 to 1
-                const scale = 1.0 + (timeProgress * 0.5); // 1.0 to 1.5
+            if (currentBgImg && currentBgImg.complete && currentBgImg.naturalWidth > 0) {
+                ctx.globalAlpha = 0.6; //0.8;
+
+                const timeProgress = Math.min(1, (60 - gameTimer) / 60);
+                const scale = 1.0 + (timeProgress * 0.5);
 
                 const scaledWidth = canvas.width * scale;
                 const scaledHeight = canvas.height * scale;
                 const offsetX = (canvas.width - scaledWidth) / 2;
                 const offsetY = (canvas.height - scaledHeight) / 2;
 
-                ctx.drawImage(bgImg, offsetX, offsetY, scaledWidth, scaledHeight);
+                ctx.drawImage(currentBgImg, offsetX, offsetY, scaledWidth, scaledHeight);
+
+                // Add progressive color tint based on level
+                const tintColors = [
+                    'rgba(0, 50, 100, 0.1)',    // Level 1: Blue tint
+                    'rgba(100, 0, 100, 0.1)',   // Level 2: Purple tint
+                    'rgba(0, 80, 80, 0.15)',    // Level 3: Cyan tint
+                    'rgba(80, 0, 80, 0.15)',    // Level 4: Magenta tint
+                    'rgba(100, 50, 0, 0.2)',    // Level 5: Orange tint
+                    'rgba(100, 0, 50, 0.2)',    // Level 6: Red-purple tint
+                    'rgba(150, 50, 0, 0.25)',   // Level 7: Deep orange tint
+                    'rgba(150, 0, 0, 0.25)',    // Level 8: Red tint
+                    'rgba(200, 50, 0, 0.3)',    // Level 9: Intense orange tint
+                    'rgba(200, 0, 0, 0.3)'      // Level 10: Intense red tint
+                ];
+
+                ctx.fillStyle = tintColors[currentLevel - 1] || 'rgba(0, 0, 0, 0)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
                 ctx.globalAlpha = 1;
             }
 
@@ -2406,7 +2723,8 @@
                 spaceship.y += (spaceship.targetY - spaceship.y) * 0.1;
 
                 const elapsedTime = Math.floor((Date.now() - gameStartTime) / 1000);
-                gameTimer = Math.max(0, 60 - elapsedTime);
+                const maxTime = debugMode ? 10 : 60; // Debug: 10s, Normal: 60s
+                gameTimer = Math.max(0, maxTime - elapsedTime);
 
                 if (gameTimer <= 0 && missedRockets < 10 && spaceshipHits < 5) {
                     levelScore = score + (gameTimer * 10);
@@ -2452,8 +2770,24 @@
                 }
 
                 // Spawn rockets
-                if (Math.random() < 0.02) {
-                    rockets.push(new Rocket());
+                if (currentLevel >= 1) {
+                    if (Math.random() < 0.02) {
+                        rockets.push(new Rocket());
+                    }
+                }
+
+                // Spawn space rocks occasionally
+                if (currentLevel >= 2) {
+                    if (Math.random() < 0.01) {
+                        spaceRocks.push(new SpaceRock());
+                    }
+                }
+
+                if (currentLevel >= 3) {
+                    // Spawn UFOs occasionally
+                    if (Math.random() < 0.008) {
+                        ufos.push(new UFO());
+                    }
                 }
 
                 // Spawn lunchbox occasionally
@@ -2471,11 +2805,6 @@
                     wingmanBoosts.push(new WingmanBoost());
                 }
 
-                // Spawn space rocks occasionally
-                if (Math.random() < 0.01) {
-                    spaceRocks.push(new SpaceRock());
-                }
-
                 // Update rockets
                 for (let i = rockets.length - 1; i >= 0; i--) {
                     const rocket = rockets[i];
@@ -2486,9 +2815,11 @@
                     if (!invulnerable) {
                         const distance = Math.hypot(rocket.x - spaceship.x, rocket.y - spaceship.y);
                         if (distance < 35) { // Collision detected
-                            spaceshipHits++;
-                            invulnerable = true;
-                            invulnerabilityTimer = 120; // 2 seconds of invulnerability at 60fps
+                            if (!debugMode) { // Only increase hits if not in debug mode
+                                spaceshipHits++;
+                                invulnerable = true;
+                                invulnerabilityTimer = 120; // 2 seconds of invulnerability at 60fps
+                            }
 
                             playSpaceshipHitSound();
 
@@ -2503,8 +2834,8 @@
                             if (spaceshipHits >= 5) {
                                 levelScore = score;
                                 totalScore += levelScore;
-                                showGameOver(false);
-                                gameState = 'gameOver';
+                                showContinueOrGameOver('hits');
+                                return;
                             }
                             continue;
                         }
@@ -2517,8 +2848,8 @@
                         if (missedRockets >= 10) {
                             levelScore = score;
                             totalScore += levelScore;
-                            showGameOver(false);
-                            gameState = 'gameOver';
+                            showContinueOrGameOver('missed'); // New function
+                            return;
                         }
                     }
                 }
@@ -2533,9 +2864,11 @@
                     if (!invulnerable) {
                         const distance = Math.hypot(rock.x - spaceship.x, rock.y - spaceship.y);
                         if (distance < rock.size / 2 + 20) {
-                            spaceshipHits++;
-                            invulnerable = true;
-                            invulnerabilityTimer = 120;
+                            if (!debugMode) { // Only increase hits if not in debug mode
+                                spaceshipHits++;
+                                invulnerable = true;
+                                invulnerabilityTimer = 120;
+                            }
 
                             playSpaceshipHitSound();
 
@@ -2549,8 +2882,8 @@
                             if (spaceshipHits >= 5) {
                                 levelScore = score;
                                 totalScore += levelScore;
-                                showGameOver(false);
-                                gameState = 'gameOver';
+                                showContinueOrGameOver('hits');
+                                return;
                             }
                             continue;
                         }
@@ -2561,6 +2894,48 @@
                         spaceRocks.splice(i, 1);
                     }
                 }
+
+                // Update UFOs 
+                for (let i = ufos.length - 1; i >= 0; i--) {
+                    const ufo = ufos[i];
+                    ufo.update();
+                    ufo.draw();
+
+                    // Check UFO-spaceship collision
+                    if (!invulnerable) {
+                        const distance = Math.hypot(ufo.x - spaceship.x, ufo.y - spaceship.y);
+                        if (distance < ufo.size + 20) {
+                            if (!debugMode) { // Only increase hits if not in debug mode
+                                spaceshipHits++;
+                                invulnerable = true;
+                                invulnerabilityTimer = 120;
+                            }
+                            playSpaceshipHitSound();
+
+                            for (let j = 0; j < 15; j++) {
+                                fireworks.push(new Particle(spaceship.x, spaceship.y));
+                            }
+
+                            ufos.splice(i, 1);
+
+                            if (spaceshipHits >= 5) {
+                                levelScore = score;
+                                totalScore += levelScore;
+                                showContinueOrGameOver('hits');
+                                return;
+                            }
+                            continue;
+                        }
+                    }
+
+                    // Remove UFOs off screen
+                    if (ufo.y > canvas.height + 100 || ufo.x < -100 || ufo.x > canvas.width + 100) {
+                        ufos.splice(i, 1);
+                    }
+                }
+
+
+
 
                 // Update power-ups
                 for (let i = powerUps.length - 1; i >= 0; i--) {
@@ -2830,6 +3205,27 @@
                                 playExplosionSound();
                                 spaceRocks.splice(j, 1);
                                 score += 10; // Bonus points for destroying a rock
+                            }
+                            break;
+                        }
+                    }
+
+
+                    // Check bullet-UFO collision
+                    for (let j = ufos.length - 1; j >= 0; j--) {
+                        const ufo = ufos[j];
+                        const distance = Math.hypot(bullet.x - ufo.x, bullet.y - ufo.y);
+                        if (distance < ufo.size + 5) {
+                            ufo.health--;
+                            ufo.hitFlash = 10;
+                            playRockHitSound();
+                            bullets.splice(i, 1);
+
+                            if (ufo.health <= 0) {
+                                createFirework(ufo.x, ufo.y);
+                                playExplosionSound();
+                                ufos.splice(j, 1);
+                                score += 15; // Good bonus for destroying UFO
                             }
                             break;
                         }
@@ -3262,6 +3658,69 @@
                 ctx.fillText(`Laser Mode: ${Math.ceil(laserModeTimer / 60)}s`, 10, canvas.height - 30);
             }
 
+            // Update enemy bullets 
+            for (let i = enemyBullets.length - 1; i >= 0; i--) {
+                const eb = enemyBullets[i];
+                eb.x += eb.vx;
+                eb.y += eb.vy;
+
+                // Draw enemy bullet
+                ctx.fillStyle = '#ff0000';
+                ctx.shadowColor = '#ff0000';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(eb.x, eb.y, eb.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // Check collision with spaceship
+                if (!invulnerable) {
+                    const distance = Math.hypot(eb.x - spaceship.x, eb.y - spaceship.y);
+                    if (distance < eb.size + 20) {
+                        if (!debugMode) { // Only increase hits if not in debug mode
+                            spaceshipHits++;
+                            invulnerable = true;
+                            invulnerabilityTimer = 120;
+                        }
+                        playSpaceshipHitSound();
+
+                        for (let j = 0; j < 10; j++) {
+                            fireworks.push(new Particle(spaceship.x, spaceship.y));
+                        }
+
+                        enemyBullets.splice(i, 1);
+
+                        if (spaceshipHits >= 5) {
+                            levelScore = score;
+                            totalScore += levelScore;
+                            showContinueOrGameOver('hits');
+                            return;
+                        }
+                        continue;
+                    }
+                }
+
+                // Remove off-screen bullets
+                if (eb.y < -20 || eb.y > canvas.height + 20 || eb.x < -20 || eb.x > canvas.width + 20) {
+                    enemyBullets.splice(i, 1);
+                }
+            }
+
+            if (debugMode) {
+                ctx.font = 'bold 24px Arial';
+                ctx.fillStyle = '#00ff00';
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 3;
+                ctx.textAlign = 'right';
+                ctx.strokeText('DEBUG MODE', canvas.width - 10, 90);
+                ctx.fillText('DEBUG MODE', canvas.width - 10, 90);
+
+                ctx.font = '18px Arial';
+                ctx.fillStyle = '#ffff00';
+                ctx.fillText('Invincible | 10s Timer', canvas.width - 10, 105);
+            }
+
+
             // Game over screen
             if (gameState === 'gameover') {
                 ctx.font = 'bold 72px Arial';
@@ -3324,6 +3783,12 @@
                     resetGame();
                 }
             }
+
+            // Add this with the other UI elements
+            ctx.font = '20px Arial';
+            ctx.fillStyle = continuesRemaining === 0 ? '#ff0000' : '#00ff00';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Continues: ${continuesRemaining}/3`, 10, canvas.height - 60);
 
             // Update pause button
             const pauseBtn = document.getElementById('pauseBtn');
