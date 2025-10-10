@@ -20,6 +20,11 @@ Code Review:  Human (90%), Claude Desktop (10%)
 Testing:  Human (95%), Claude Desktop (5% provided test tips and key scopes)   
 <br>    
 
+Gameplay   
+<a href="https://youtu.be/tcN8tySNyjQ">
+<img src="https://markdown-videos-api.jorgenkh.no/youtube/tcN8tySNyjQ" width="500px">
+</a>
+
 ```                                 ...:+%@%#****#%@%+:.....                               
                             ....=%*------------------#%=....                            
                             .=#=-----------------------+*%=. .                          
