@@ -4,8 +4,21 @@ Space Food Battle
 ---
 **Managing Code Generation with Claude Desktop: Strategies and Challenges**   
 
+***Background***
+
 At the very beginning, we provide prompts and allow Claude Desktop to generate the entire source code. Over time, the code has grown to over 1200 lines, leading to an increase in errors. Since we are using the free edition, if the generated code is too lengthy, we may be unable to use Claude for up to 5 hours. To maximize our usage and avoid this penalty, we make adjustments as needed, providing prompts while Claude supplies the code blocks. We then insert these blocks into the code file and conduct testing. Sometimes, we generate dummy code with the tool, which we later replace with actual ASCII art text in the code blocks.
 
+AI Tool: Claude Desktop (Free)   
+IDE: VS Code   
+Browser: Chrome   
+System: AMD Ryzen 9 w/ Radeon 780M Graphics (4.00 GHz), 32.0 GB DDR RAM
+
+***Tasks***   
+Design: Human (90%), Claude Desktop (10%)   
+Coding: Human (5%), Claude Desktop (95%)   
+Code Review:  Human (90%), Claude Desktop (10%)   
+Testing:  Human (95%), Claude Desktop (5% provided test tips and key scopes)   
+<br>    
 
 ```                                 ...:+%@%#****#%@%+:.....                               
                             ....=%*------------------#%=....                            

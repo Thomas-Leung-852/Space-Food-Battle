@@ -1,0 +1,33 @@
+==========================================================================================================================================================================================
+Release Version: v251010-03-A
+Date: 20251010
+Time: 2200
+File Version: space_food_battle_v23
+Changes
+1. Added Level 4,5,6
+2. Added  Defensive Weapons (Shield, EMP, Decoy)
+3. Refine source code structure (VS Code + Comment ANCHORS Extension)
+4. Remove magic number 
+5. Fixed Memory Leak  
+6. Added Debug mode
+
+
+==========================================================================================================================================================================================
+Release Version: v251007-02-A
+Date: 20251007
+Time: 2300
+File Version: space_food_battle_v18
+Changes
+1. Bugs fixed
+2. Added Homing Wingman
+3. Allow Mute/ unmute Music and Sound
+4. Use mouse wheel to rotate the spaceship
+5. Wingmen can use machine gun weapon
+
+
+==========================================================================================================================================================================================
+Release Version: v251006-01-A
+Date: 20251006
+Time: 2300
+File Version: space_food_battle_v15
+Initial Release
