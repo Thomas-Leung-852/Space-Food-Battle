@@ -3,6 +3,7 @@
 
 <head>
     <title>Space Food Battle</title>
+    <meta http-equiv="Cache-control" content="private">
     <style>
         body {
             margin: 0;
@@ -209,13 +210,15 @@
     <div id="info">
         Click to shoot! Hit rockets for fireworks! Hit lunchbox for missiles! Press P to pause<br>
         Press B to activate Super Weapon! (2 uses remaining) | Press C to change formation (4 modes)<br>
-        Press V to deploy Turret (max 2)! Press SPACE for Homing Wingman (5s duration)!<br>
+        Press V to deploy Turret (max 2)! Press SPACE for Homing Wingman <span style="color: #ffaa00;">(Level 6+: 2
+            uses!)</span><br>
         <span style="color: #00ffff;">Level 5+: Press E for EMP Blast! Press Q to Deploy Decoy!</span><br>
         Level 6+: Destroy Heavy Cruisers for big points! Avoid rocket collisions! (5 hits = Game Over)<br>
         Controls: A = Rotate Left, D = Rotate Right, S = Reset Rotation, Mouse Wheel = Rotate
     </div>
     <div class="game-buttons">
         <button class="game-btn" id="pauseBtn" style="background: #4CAF50;">PAUSE</button>
+        <!-- <button class="game-btn" id="changeMusicBtn" style="background: #9C27B0;">🎵 CHANGE</button> -->
         <button class="game-btn" id="musicBtn" style="background: #2196F3;">🔊 MUSIC</button>
         <button class="game-btn" id="quitBtn" style="background: #f44336;">QUIT</button>
     </div>
@@ -346,6 +349,8 @@
         // All timing values assume 60 FPS.
         // ================================================
 
+        const MAX_GAME_LEVEL = 10;
+
         // ANCHOR -  Game Balance Constants
         const MAX_SPACESHIP_HITS = 5;
         const MAX_MISSED_ROCKETS = 10;
@@ -363,6 +368,8 @@
         const MISSILE_MODE_DURATION = 10 * FPS;     // 600 frames
         const DRONE_WAVE_INTERVAL = 15 * FPS;       // 900 frames
         const MACHINE_GUN_INTERVAL = 15 * FPS;       // 900 frames
+        const HOMING_WINGMAN_LIFTTIME_1 = 5 * FPS;
+        const HOMING_WINGMAN_LIFTTIME_2 = 10 * FPS;
 
         // ANCHOR - COLLISION CONSTANTS
         const HIT_RADIUS = {
@@ -390,6 +397,23 @@
             POWER_UP_BONUS: 3
         };
 
+        // ANCHOR - GAME BALANCE CONSTANTS
+        const GAME_LIMITS = {
+            MAX_HITS: 5,              // Game over after 5 hits
+            MAX_MISSED: 10,           // Game over after 10 missed rockets
+            MAX_CONTINUES: 3,         // Number of continues available
+            LEVEL_TIME: 60,           // Level duration in seconds
+            DEBUG_TIME: 10,           // Debug mode shortened time
+            INVULN_FRAMES: 120,       // Invulnerability duration (2 seconds at 60fps)
+            TURRET_COOLDOWN: 180,     // Turret deploy cooldown (3 seconds)
+            MAX_TURRETS: 2,           // Maximum deployable turrets
+            MAX_ATTACK_DRONES: 2,      // Maximum active attack drones
+            HOMING_WINGMAN_MAX_USES_LVL_1: 20,
+            HOMING_WINGMAN_USES_REMAINING_LVL_1: 20,
+            HOMING_WINGMAN_MAX_USES_LVL_2: 50,
+            HOMING_WINGMAN_USES_REMAINING_LVL_2: 50
+        };
+
         // NOTE: Others
         const ENABLE_DEBUG = true; // Set to false for production
 
@@ -415,6 +439,72 @@
             }
         };
 
+        // ANCHOR - PERFORMANCE & BALANCE CONSTANTS
+        const ENTITY_LIMITS = {
+            MAX_ROCKETS: 15,          // Reduced from unlimited
+            MAX_ROCKS: 12,            // Reduced from unlimited
+            MAX_UFOS: 5,              // Reduced from unlimited
+            MAX_ELITE_UFOS: 3,        // Level 7+
+            MAX_SWARM_ENEMIES: 20,    // Total swarm cap
+            MAX_ENEMY_BULLETS: 30,    // Prevent bullet spam
+            MAX_TOTAL_ENEMIES: 40     // Global cap
+        };
+
+        // ANCHOR - LEVEL 7 CONSTANTS (REBALANCED)
+        const LEVEL_7 = {
+            // Swarm system - REDUCED
+            SWARM_SIZE: 8,            // Reduced from 12
+            SWARM_INTERVAL: 900,      // Increased from 600 (15 seconds)
+            MAX_SWARMS: 3,            // Reduced from 5
+
+            // Elite UFO - REDUCED
+            ELITE_UFO_SPAWN_RATE: 0.003, // Reduced from 0.006
+            ELITE_UFO_HEALTH: 5,
+            ELITE_UFO_SPEED: 1.5,
+
+            // Meteor shower - REDUCED
+            METEOR_DURATION: 120,     // Reduced from 180 (2 seconds)
+            METEOR_SPAWN_RATE: 0.15,  // Reduced from 0.3
+
+            // Difficulty multiplier - REDUCED
+            INTENSITY: 1.2,           // Reduced from 1.5
+
+            // Score bonuses
+            SWARM_CLEAR_BONUS: 100,
+            ELITE_UFO_BONUS: 25
+        };
+
+        // Level 8 constants 
+        const LEVEL_8 = {
+            MINI_BOSSES_REQUIRED: 3,
+            BOSS_SPAWN_INTERVAL: 1200,  // 20 seconds between bosses
+            BOSS_HEALTH_MULTIPLIER: 1.5,
+            ENEMY_SPAWN_REDUCTION: 0.5   // 50% fewer regular enemies
+        };
+
+        // Level 9 constants 
+        const LEVEL_9 = {
+            DURATION: 90,                    // 90 seconds (extended)
+            INTENSITY_MULTIPLIER: 1.8,       // All spawns increased
+            WAVE_INTERVAL: 900,              // 15 second waves
+            MAX_WAVES: 6,                    // 6 escalating waves
+            ELITE_SPAWN_RATE: 0.008,         // More elite UFOs
+            CRUISER_SPAWN_RATE: 0.004,       // Occasional cruisers
+            ASTEROID_BELT_CHANCE: 0.002,     // Random asteroid belts
+            SWARM_SIZE: 12,                  // Larger swarms
+            SURVIVAL_BONUS: 500              // Completion bonus
+        };
+
+        // Level 10 
+        const LEVEL_10 = {
+            DURATION: 90,
+            MOTHERSHIP_HEALTH: 100,
+            MOTHERSHIP_MAX_HEALTH: 100,
+            VICTORY_BONUS: 1000,
+            NO_DAMAGE_BONUS: 500,
+            ESCORT_SPAWN_RATE: 0.003,  // Occasional elite UFOs
+            BACKGROUND_ENEMIES: 0.4     // 40% normal spawn rate
+        };
         /**************************************************
          * !SECTION : Constants
         ***************************************************/
@@ -422,10 +512,103 @@
         /**************************************************
           * SECTION : classes
          ***************************************************/
+
+        // ANCHOR - Sound Play class
+        class SoundPlayer {
+            constructor(audioContext) {
+                this.ctx = audioContext;
+                this.enabled = true;
+            }
+
+            play(config) {
+                if (!this.ctx || !this.enabled) return;
+
+                const oscillator = this.ctx.createOscillator();
+                const gainNode = this.ctx.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(this.ctx.destination);
+
+                oscillator.type = config.type;
+                oscillator.frequency.setValueAtTime(config.freq, this.ctx.currentTime);
+
+                if (config.freqEnds) {
+                    config.freqEnds.forEach((freqEnd, index) => {
+                        oscillator.frequency.exponentialRampToValueAtTime(
+                            freqEnd,
+                            this.ctx.currentTime + config.duration
+                        )
+                    });
+
+                    // oscillator.frequency.exponentialRampToValueAtTime(
+                    //     config.freqEnd,
+                    //     this.ctx.currentTime + config.duration
+                    // );
+                }
+
+                gainNode.gain.setValueAtTime(config.volume, this.ctx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(
+                    0.01,
+                    this.ctx.currentTime + config.duration
+                );
+
+                oscillator.start(this.ctx.currentTime);
+                oscillator.stop(this.ctx.currentTime + config.duration);
+            }
+        }
+
+        // ANCHOR - Object Pool for Particles
+        class ParticlePool {
+            constructor(size = 200) {
+                this.pool = [];
+                this.activeParticles = [];
+
+                for (let i = 0; i < size; i++) {
+                    this.pool.push(new Particle(0, 0));
+                }
+            }
+
+            get(x, y) {
+                let particle;
+                if (this.pool.length > 0) {
+                    particle = this.pool.pop();
+                    particle.x = x;
+                    particle.y = y;
+                    particle.life = particle.maxLife;
+                    particle.vx = (Math.random() - 0.5) * 10;
+                    particle.vy = (Math.random() - 0.5) * 10;
+                } else {
+                    particle = new Particle(x, y);
+                }
+                this.activeParticles.push(particle);
+                return particle;
+            }
+
+            release(particle) {
+                const index = this.activeParticles.indexOf(particle);
+                if (index > -1) {
+                    this.activeParticles.splice(index, 1);
+                    this.pool.push(particle);
+                }
+            }
+
+            update() {
+                for (let i = this.activeParticles.length - 1; i >= 0; i--) {
+                    const particle = this.activeParticles[i];
+                    particle.update();
+                    particle.draw();
+
+                    if (particle.life <= 0) {
+                        this.release(particle);
+                    }
+                }
+            }
+        }
         // ANCHOR - Text Animation System
         class TextAnimationManager {
             constructor() {
                 this.activeAnimations = [];
+                this.animationFrameId = null;
             }
 
             // Show animated text that fades in/out with color cycling
@@ -473,8 +656,6 @@
 
                 animation.frame++;
 
-                // Schedule next frame
-                animation.timeoutId = setTimeout(() => this.animate(animation), 16);
             }
 
             // Remove specific animation
@@ -505,7 +686,27 @@
             update() {
                 // Animations draw themselves in animate() method
                 // This is just for cleanup of finished animations
-                this.activeAnimations = this.activeAnimations.filter(a => a.active);
+
+                for (let i = this.activeAnimations.length - 1; i >= 0; i--) {
+                    const animation = this.activeAnimations[i];
+
+                    if (!animation.active || animation.frame >= animation.maxFrames) {
+                        this.activeAnimations.splice(i, 1);
+                        continue;
+                    }
+
+                    const hue = (animation.startColor + (animation.frame * animation.colorSpeed)) % animation.colorRange;
+
+                    ctx.font = `${animation.fontWeight} ${animation.fontSize}px Arial`;
+                    ctx.fillStyle = animation.fillStyle || `hsl(${hue}, 100%, 70%)`;
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = animation.strokeWidth;
+                    ctx.textAlign = 'center';
+                    ctx.strokeText(animation.text, animation.x, animation.y);
+                    ctx.fillText(animation.text, animation.x, animation.y);
+
+                    animation.frame++;
+                }
             }
         }
 
@@ -2008,6 +2209,261 @@
             }
         }
 
+        // ANCHOR - Elite UFO Class (Level 7+)
+        class EliteUFO extends UFO {
+            constructor() {
+                super();
+                this.health = LEVEL_7.ELITE_UFO_HEALTH;
+                this.maxHealth = LEVEL_7.ELITE_UFO_HEALTH;
+                this.size = 50;
+                this.shootInterval = 90; // Faster shooting (1.5 seconds)
+                this.isElite = true;
+                this.shieldPhase = 0;
+                this.dodgeTimer = 0;
+                this.dodgeCooldown = 180; // 3 seconds between dodges
+            }
+
+            update() {
+                super.update();
+                this.shieldPhase += 0.1;
+
+                // Evasive maneuvers
+                if (this.dodgeTimer > 0) {
+                    this.dodgeTimer--;
+                    // Quick zigzag
+                    this.vx += Math.sin(this.dodgeTimer * 0.3) * 2;
+                } else if (this.dodgeCooldown > 0) {
+                    this.dodgeCooldown--;
+                }
+
+                // Check if bullets nearby - trigger dodge
+                if (this.dodgeCooldown <= 0) {
+                    for (let bullet of bullets) {
+                        const dist = Math.hypot(bullet.x - this.x, bullet.y - this.y);
+                        if (dist < 100) {
+                            this.dodgeTimer = 30; // 0.5 second dodge
+                            this.dodgeCooldown = 180;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            shoot() {
+                // Triple shot spread
+                const angles = [-0.2, 0, 0.2];
+                angles.forEach(offset => {
+                    const dx = spaceship.x - this.x;
+                    const dy = spaceship.y - this.y;
+                    const angle = Math.atan2(dy, dx) + offset;
+
+                    enemyBullets.push({
+                        x: this.x,
+                        y: this.y,
+                        vx: Math.cos(angle) * 4,
+                        vy: Math.sin(angle) * 4,
+                        size: 6,
+                        elite: true
+                    });
+                });
+
+                if (soundEnabled) playMissileSound();
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+
+                // Elite shield visual
+                const shieldAlpha = Math.sin(this.shieldPhase) * 0.2 + 0.3;
+                ctx.strokeStyle = `rgba(255, 100, 0, ${shieldAlpha})`;
+                ctx.lineWidth = 3;
+                ctx.shadowColor = '#ff6600';
+                ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.size + 10, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                if (this.hitFlash > 0) {
+                    ctx.shadowColor = '#ffffff';
+                    ctx.shadowBlur = 20;
+                }
+
+                // Main body - darker, more aggressive
+                ctx.fillStyle = this.hitFlash > 0 ? '#ffffff' : '#ff3300';
+
+                // Dome
+                ctx.beginPath();
+                ctx.ellipse(0, -10, this.size * 0.4, this.size * 0.3, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Body
+                ctx.fillStyle = this.hitFlash > 0 ? '#ffff00' : '#cc0000';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, this.size * 0.6, this.size * 0.2, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Elite markings
+                ctx.strokeStyle = '#ffff00';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-this.size * 0.3, 0);
+                ctx.lineTo(this.size * 0.3, 0);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, -this.size * 0.2);
+                ctx.lineTo(0, this.size * 0.2);
+                ctx.stroke();
+
+                // Lights (aggressive red)
+                for (let i = 0; i < 5; i++) {
+                    const angle = (Math.PI * 2 * i) / 5;
+                    const lx = Math.cos(angle) * this.size * 0.5;
+                    const ly = Math.sin(angle) * this.size * 0.15;
+                    ctx.fillStyle = '#ff0000';
+                    ctx.beginPath();
+                    ctx.arc(lx, ly, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+                ctx.shadowBlur = 0;
+
+                // Health bar
+                this.drawHealthBar();
+            }
+
+            drawHealthBar() {
+                const barWidth = 60;
+                const barHeight = 6;
+                const barX = this.x - barWidth / 2;
+                const barY = this.y - this.size - 20;
+
+                ctx.fillStyle = '#333333';
+                ctx.fillRect(barX, barY, barWidth, barHeight);
+
+                const healthPercent = this.health / this.maxHealth;
+                ctx.fillStyle = healthPercent < 0.3 ? '#ff0000' : healthPercent < 0.6 ? '#ffaa00' : '#00ff00';
+                ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+                // "ELITE" tag
+                ctx.font = 'bold 10px Arial';
+                ctx.fillStyle = '#ff6600';
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 2;
+                ctx.textAlign = 'center';
+                ctx.strokeText('ELITE', this.x, barY - 5);
+                ctx.fillText('ELITE', this.x, barY - 5);
+            }
+        }
+
+        // ANCHOR - Swarm Enemy Class (Level 7+)
+        class SwarmEnemy {
+            constructor(waveNumber, spawnSide) {
+                // Spawn from specified side
+                switch (spawnSide) {
+                    case 'top':
+                        this.x = Math.random() * canvas.width;
+                        this.y = -30;
+                        break;
+                    case 'left':
+                        this.x = -30;
+                        this.y = Math.random() * canvas.height * 0.6;
+                        break;
+                    case 'right':
+                        this.x = canvas.width + 30;
+                        this.y = Math.random() * canvas.height * 0.6;
+                        break;
+                }
+
+                this.speed = 3 + (waveNumber * 0.3);
+                this.size = 8;
+                this.health = 1;
+                this.rotation = 0;
+                this.trail = [];
+                this.targetOffset = {
+                    x: (Math.random() - 0.5) * 200,
+                    y: (Math.random() - 0.5) * 200
+                };
+                this.color = `hsl(${Math.random() * 60}, 100%, 60%)`; // Red/Orange/Yellow
+                this.pulsePhase = Math.random() * Math.PI * 2;
+            }
+
+            update() {
+                // Add to trail
+                this.trail.push({ x: this.x, y: this.y });
+                if (this.trail.length > 8) {
+                    this.trail.shift();
+                }
+
+                // Target player with slight offset for swarm spread
+                const targetX = spaceship.x + this.targetOffset.x;
+                const targetY = spaceship.y + this.targetOffset.y;
+
+                const dx = targetX - this.x;
+                const dy = targetY - this.y;
+                const distance = Math.hypot(dx, dy);
+
+                if (distance > 0) {
+                    this.x += (dx / distance) * this.speed;
+                    this.y += (dy / distance) * this.speed;
+                    this.rotation = Math.atan2(dy, dx) + Math.PI / 2;
+                }
+
+                this.pulsePhase += 0.2;
+            }
+
+            draw() {
+                // Draw trail
+                ctx.strokeStyle = `${this.color}80`; // Semi-transparent
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                for (let i = 0; i < this.trail.length; i++) {
+                    const point = this.trail[i];
+                    const alpha = i / this.trail.length;
+                    ctx.globalAlpha = alpha * 0.4;
+                    if (i === 0) ctx.moveTo(point.x, point.y);
+                    else ctx.lineTo(point.x, point.y);
+                }
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+
+                // Pulsing glow
+                const pulse = Math.sin(this.pulsePhase) * 0.3 + 0.7;
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 12 * pulse;
+
+                // Small aggressive triangle
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.moveTo(0, -this.size);
+                ctx.lineTo(-this.size * 0.6, this.size * 0.6);
+                ctx.lineTo(this.size * 0.6, this.size * 0.6);
+                ctx.closePath();
+                ctx.fill();
+
+                // Inner glow
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(0, 0, this.size * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+
         // ANCHOR - Power up class
         class PowerUp {
             constructor() {
@@ -2116,7 +2572,8 @@
 
         // ANCHOR - Lunchbox class
         class Lunchbox {
-            constructor() {
+
+            constructor(aLunchboxImage) {
                 this.x = Math.random() * (canvas.width - 60) + 30;
                 this.y = -30;
                 this.vy = 1.5 + Math.random() * 2;
@@ -2124,6 +2581,7 @@
                 this.rotation = 0;
                 this.rotationSpeed = 0.02 + Math.random() * 0.04;
                 this.pulse = 0;
+                this.lunchBoxImg = aLunchboxImage;
             }
 
             update() {
@@ -2134,30 +2592,8 @@
 
             draw() {
                 ctx.save();
-                ctx.translate(this.x, this.y);
-                ctx.rotate(this.rotation);
-
-                // Glowing effect
-                const glowIntensity = Math.sin(this.pulse) * 0.3 + 0.7;
-                ctx.shadowColor = '#00ff88';
-                ctx.shadowBlur = 20 * glowIntensity;
-
-                // Main lunchbox body
-                ctx.fillStyle = '#ff6b6b';
-                ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
-
-                // Handle
-                ctx.fillStyle = '#333';
-                ctx.fillRect(-this.size / 6, -this.size / 2 - 5, this.size / 3, 8);
-
-                // Logo/symbol
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 16px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('🍱', 0, 5);
-
+                ctx.drawImage(this.lunchBoxImg, this.x, this.y, 60, 60);
                 ctx.restore();
-                ctx.shadowBlur = 0;
             }
         }
 
@@ -2493,8 +2929,9 @@
                 this.exploding = false;
                 this.explosionTimer = 0;
                 this.searchRadius = 400;
-                this.lifetime = 300; // 5 seconds at 60fps (5 * 60 = 300 frames)
-                this.maxLifetime = 300;
+                this.lifetime = (currentLevel >= 5) ? HOMING_WINGMAN_LIFTTIME_2 : HOMING_WINGMAN_LIFTTIME_1;
+                this.maxLifetime = (currentLevel >= 5) ? HOMING_WINGMAN_LIFTTIME_2 : HOMING_WINGMAN_LIFTTIME_1;
+                this.cruiserFound = false;
             }
 
             findNearestRocket() {
@@ -2515,8 +2952,10 @@
                     if (dist < minDist * 1.3) { // 30% bonus range for cruisers
                         minDist = dist;
                         nearest = cruiser;
+                        this.cruiserFound = true;
                     }
                 });
+
                 return nearest;
             }
 
@@ -2594,6 +3033,12 @@
 
                             // Clear target to find next one
                             this.target = null;
+
+                            if (this.cruiserFound) {
+                                this.exploding = true;
+                                this.cruiserFound = false;
+                            }
+
                         }
                     } else {
                         // No target available, patrol slowly
@@ -2937,6 +3382,191 @@
             }
         }
 
+        // ANCHOR - Level 10 Mother Ship Alpha class
+        class MotherShipAlpha {
+            constructor() {
+                this.x = canvas.width / 2;
+                this.y = -150;
+                this.size = 100;  // HUGE! : 150
+                this.health = LEVEL_10.MOTHERSHIP_HEALTH;
+                this.maxHealth = LEVEL_10.MOTHERSHIP_MAX_HEALTH;
+
+                // Movement pattern
+                this.vx = 2;
+                this.vy = 0.5;
+                this.targetY = 150;
+                this.arrived = false;
+
+                // Attack timers
+                this.bulletTimer = 0;
+                this.rocketTimer = 0;
+                this.droneTimer = 0;
+
+                // Visual
+                this.sprite = new Image();
+                this.sprite.src = 'https://opengameart.org/sites/default/files/DurrrSpaceShip_0.png';
+                this.rotation = 0;
+                this.pulse = 0;
+                this.hitFlash = 0;
+            }
+
+            update() {
+                // Entry movement
+                if (!this.arrived) {
+                    if (this.y < this.targetY) {
+                        this.y += this.vy;
+                    } else {
+                        this.arrived = true;
+                    }
+                } else {
+                    // Horizontal movement pattern
+                    this.x += this.vx;
+                    if (this.x < 150 || this.x > canvas.width - 150) {
+                        this.vx *= -1;
+                    }
+
+                    // Slow vertical drift
+                    this.y += Math.sin(this.pulse * 0.02) * 0.3;
+                }
+
+                this.pulse++;
+                if (this.hitFlash > 0) this.hitFlash--;
+
+                // Attack patterns
+                if (this.arrived) {
+                    this.attackPattern();
+                }
+            }
+
+            attackPattern() {
+                // Spread bullets every 2 seconds
+                this.bulletTimer++;
+                if (this.bulletTimer >= 120) {
+                    this.shootSpread();
+                    this.bulletTimer = 0;
+                }
+
+                // Rockets every 4 seconds
+                this.rocketTimer++;
+                if (this.rocketTimer >= 240) {
+                    this.shootRockets();
+                    this.rocketTimer = 0;
+                }
+
+                // Spawn drones every 6 seconds
+                this.droneTimer++;
+                if (this.droneTimer >= 360) {
+                    this.spawnDrones();
+                    this.droneTimer = 0;
+                }
+            }
+
+            shootSpread() {
+                // 7-way spread toward player
+                for (let i = -3; i <= 3; i++) {
+                    const angle = Math.atan2(spaceship.y - this.y, spaceship.x - this.x);
+                    const spreadAngle = angle + (i * 0.2);
+
+                    enemyBullets.push({
+                        x: this.x,
+                        y: this.y + 50,
+                        vx: Math.cos(spreadAngle) * 4,
+                        vy: Math.sin(spreadAngle) * 4,
+                        size: 8,
+                        elite: true
+                    });
+                }
+
+                if (soundEnabled) playMissileSound();
+            }
+
+            shootRockets() {
+                // Launch 5 rockets
+                for (let i = 0; i < 5; i++) {
+                    setTimeout(() => {
+                        rockets.push(new Rocket());
+                    }, i * 100);
+                }
+            }
+
+            spawnDrones() {
+                // Spawn 3 kamikaze drones
+                for (let i = 0; i < 3; i++) {
+                    kamikazeDrones.push(new KamikazeDrone(5));
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // Hit flash effect
+                if (this.hitFlash > 0) {
+                    ctx.shadowColor = '#ffffff';
+                    ctx.shadowBlur = 30;
+                    ctx.globalAlpha = 0.7;
+                }
+
+                // Pulsing glow
+                const glowIntensity = Math.sin(this.pulse * 0.05) * 0.3 + 0.7;
+                ctx.shadowColor = '#ff0000';
+                ctx.shadowBlur = 20 * glowIntensity;
+
+                // Draw sprite
+                if (this.sprite.complete) {
+                    ctx.drawImage(
+                        this.sprite,
+                        -this.size,
+                        -this.size,
+                        this.size * 2,
+                        this.size * 2
+                    );
+                } else {
+                    // Fallback if image not loaded
+                    ctx.fillStyle = '#ff0000';
+                    ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
+                }
+
+                ctx.restore();
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1;
+
+                // Draw health bar
+                this.drawHealthBar();
+            }
+
+            drawHealthBar() {
+                const barWidth = 200;
+                const barHeight = 20;
+                const barX = this.x - barWidth / 2;
+                const barY = this.y - this.size - 40;
+
+                // Background
+                ctx.fillStyle = '#330000';
+                ctx.fillRect(barX, barY, barWidth, barHeight);
+
+                // Health
+                const healthPercent = this.health / this.maxHealth;
+                ctx.fillStyle = healthPercent > 0.5 ? '#ff0000' : '#ffaa00';
+                ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+
+                // Border
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+                // Text
+                ctx.font = 'bold 16px Arial';
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 3;
+                ctx.textAlign = 'center';
+                ctx.strokeText(`MOTHERSHIP ALPHA`, this.x, barY - 10);
+                ctx.fillText(`MOTHERSHIP ALPHA`, this.x, barY - 10);
+                ctx.strokeText(`${this.health}/${this.maxHealth}`, this.x, barY + 15);
+                ctx.fillText(`${this.health}/${this.maxHealth}`, this.x, barY + 15);
+            }
+        }
         /**************************************************
          * !SECTION : classes
         ***************************************************/
@@ -2946,6 +3576,7 @@
         ***************************************************/
         // Create global instance
         let textAnimations = new TextAnimationManager();
+        let particlePool = new ParticlePool(200);
 
         // Debug mode level selection
         let debugLevelSelectMode = false;
@@ -2969,7 +3600,12 @@
             new Image(),
             new Image(),
             new Image(),
-            new Image()
+            new Image(),
+            new Image(),
+            new Image(),
+            new Image(),
+            new Image(),
+            new Image(),
         ];
 
         for (let i = 0; i < bgImages.length; i++) {
@@ -2984,6 +3620,11 @@
         bgImages[2].src = 'https://cdn.pixabay.com/photo/2016/10/20/18/35/earth-1756274_1280.jpg';
         bgImages[3].src = 'https://cdn.pixabay.com/photo/2024/11/11/09/52/galaxy-9189705_960_720.jpg';
         bgImages[4].src = 'https://cdn.pixabay.com/photo/2016/07/20/10/57/nebula-10-1530144_960_720.png';
+        bgImages[5].src = 'https://cdn.pixabay.com/photo/2011/12/15/11/37/galaxy-11188_960_720.jpg';
+        bgImages[6].src = 'https://cdn.pixabay.com/photo/2024/06/25/21/42/hd-wallpaper-8853669_960_720.png';
+        bgImages[7].src = 'https://cdn.pixabay.com/photo/2011/12/14/12/18/space-11099_960_720.jpg';
+        bgImages[8].src = 'https://cdn.pixabay.com/photo/2014/12/27/16/38/planet-581239_1280.jpg';
+        bgImages[9].src = 'https://cdn.pixabay.com/photo/2017/08/01/17/53/atmosphere-2566911_1280.jpg';
 
         const ufoImage = new Image();
         ufoImage.src = 'https://opengameart.org/sites/default/files/styles/medium/public/Asteroid%20Brown.png'; // Free UFO image 
@@ -3106,9 +3747,12 @@
             }
         ];
 
+        // Homing Wingman System
         let homingWingmen = [];
         let homingWingmanCooldown = 0;
-        const homingWingmanCooldownTime = 600; // 10 seconds cooldown
+        let homingWingmanCooldownTime = 120; // 60 = 1s
+        let homingWingmanMaxUses = GAME_LIMITS.HOMING_WINGMAN_MAX_USES_LVL_1;
+        let homingWingmanUsesRemaining = GAME_LIMITS.HOMING_WINGMAN_USES_REMAINING_LVL_1;
 
         // Level 4: Asteroid Belt system
         let asteroidBeltActive = false;
@@ -3146,38 +3790,31 @@
         let turretDeployCooldown = 0;
         let turretDeployCooldownTime = TURRET_COOLDOWN; // 3 seconds cooldown at 60fps
 
-        // Setup Background music :: Begin
-        // Array of background music URLs
-        const bgMusicTracks = [
-            'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Phantom%20from%20Space.mp3',
-            'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Space%20Jazz.mp3',
-            'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Newer%20Wave.mp3',
-            'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Lord%20of%20the%20Rangs.mp3',
-            'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Laserpack.mp3'
+        const bgMusicTracksWithNames = [
+            { url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Envision.mp3', name: 'Envision' },
+            { url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Space%20Jazz.mp3', name: 'Space Jazz' },
+            { url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Newer%20Wave.mp3', name: 'Newer Wave' },
+            { url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Lord%20of%20the%20Rangs.mp3', name: 'Lord of the Rangs' },
+            { url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Laserpack.mp3', name: 'Laserpack' },
+            { url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Brain%20Dance.mp3', name: 'Brain Dance' },
+            { url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Canon%20In%20D%20For%208%20Bit%20Synths.mp3', name: 'Canon In D (8-bit)' },
+            { url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Raving%20Energy%20(faster).mp3', name: 'Raving Energy' }
         ];
 
         // Select random track
-        const randomTrackIndex = Math.floor(Math.random() * bgMusicTracks.length);
+        const randomTrackIndex = Math.floor(Math.random() * bgMusicTracksWithNames.length);
         let currentTrackIndex = randomTrackIndex;
 
         // Create audio element with random track
         let bgMusic = document.getElementById('bgMusic');
-        bgMusic.src = bgMusicTracks[currentTrackIndex];
+        bgMusic.src = bgMusicTracksWithNames[currentTrackIndex].url;
 
         // Music Control variables (keep existing ones)
         let musicPlaying = false;
-        let musicVolume = 0.3; // 30% volume
+        let musicVolume = 0.5; // 30% volume
         let soundEnabled = true; // Master sound contro
 
-        // Add track switching on music end
-        bgMusic.addEventListener('ended', () => {
-            // Play next random track
-            currentTrackIndex = Math.floor(Math.random() * bgMusicTracks.length);
-            bgMusic.src = bgMusicTracks[currentTrackIndex];
-            if (musicPlaying) {
-                bgMusic.play().catch(e => console.log('Audio play failed:', e));
-            }
-        });
+
         // Setup Background music :: End
 
         // Power-up system
@@ -3205,8 +3842,8 @@
             s: false
         };
 
-
         let audioContext;
+        let soundPlayer;
 
         const rocketImage = new Image();
         rocketImage.src = "data:image/svg+xml;base64," + btoa(`<svg width="32" height="80" xmlns="http://www.w3.org/2000/svg">
@@ -3242,7 +3879,7 @@
         let cruisersDestroyed = 0;
         let cruiserBullets = [];
 
-        // ANCHOR - Protective Weapon Variables (Level 5+)
+        // Protective Weapon Variables (Level 5+)
         let shieldActive = false;
         let shieldHits = 0;
         let empCharges = 0;
@@ -3250,10 +3887,123 @@
         let decoys = [];
         let protectivePowerUps = []; // Visual pickups
 
+        // Lunchbox prebuild image
+        let svgData = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:ns1="http://sozi.baierouge.fr" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns="http://www.w3.org/2000/svg" xmlns:cc="http://web.resource.org/cc/" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" id="svg2" version="1.0" viewBox="0 0 1236.3 863.29" inkscape:version="0.91 r13725">
+  <g id="layer1" transform="translate(-121.16 -386.41)">
+    <path id="path3373" style="stroke-linejoin:round;fill-rule:evenodd;stroke:#000000;stroke-linecap:round;stroke-width:8.1307;fill:#261e1e" d="m172.9 1147.6l22.7 98 1092-8.4 27.2-120.4-1137.4 8.4-4.5 22.4z"/>
+    <path id="path3371" style="stroke-linejoin:round;fill-rule:evenodd;stroke:#000000;stroke-linecap:round;stroke-width:8.1307;fill:#362b2b" d="m329.55 425.01l-204.33 716.99h1228.2l-204.3-728.19-819.55 11.2z"/>
+    <path id="path3375" style="stroke-linejoin:round;fill-rule:evenodd;stroke:#000000;stroke-linecap:round;stroke-width:8.1307;fill:#261e1e" d="m359.06 447.42l-186.16 666.58 1126-11.2s-168-652.58-179.3-652.58c-11.4 0-760.54 5.6-760.54-2.8z"/>
+    <path id="path4175" style="stroke-linejoin:round;fill-rule:evenodd;stroke:#000000;stroke-linecap:round;stroke-width:8.1186;fill:#e6e1e0" d="m534.77 1107.9c-0.33-16.8-17.79 2-24.17 0-3.41-1-2.51-18.8-3.15-21.9-0.91-4.5 1.05-18.2 1.05-24.6 0-25.3 17.15 2 4.2-24.6-4.76-9.7 4.5-17.8 8.41-24.5 4.05-7-1.05-17.93-1.05-25.85 0-18.82 14.34-8.95 4.2-29.73-2.63-5.39-2.1-17.7-2.1-23.26 0-12.57 12.99-13.62 10.51-25.85-1.78-8.71-4.01-16.49-2.11-25.84 1.61-7.89 5.65-16.63 6.31-20.68 0.52-3.2-3.15-18.05-3.15-24.56 0-10.83 10.99-3.93 3.15-16.8-3.32-5.43-2.39-15.4-1.05-21.97 1.27-6.28 7.49-7.51 8.4-14.21 0.41-3.02-5.67-10.86-4.2-18.1 1.55-7.61 4.2-10.45 4.2-19.38 0-9.35 5.31-4.93 3.16-15.51-1.24-6.08-10.9-10.86 0-14.22 5.59-1.72 8.2-6.2 11.55-10.33 2.9-3.57 7.89 2.91 11.56 5.16 4.44 2.74 14.39-4.97 16.81-6.46 7.08-4.35 25.15-0.66 27.32 0 4.46 1.37 21.42-5.36 30.47-2.58 7.28 2.24 4.65 3.51 13.66 1.29 7.94-1.95 12.64 1.74 17.86 3.88 7.19 2.95 12.97-2.58 24.17 7.75 5.41 5 7.8-0.63 15.76-2.58 9.11-2.24 23.21 8.46 28.37 0 3.92-6.44 27.53-2.59 32.57-2.59 7.56 0 19.01-3.87 29.42-3.87 11.38 0 22.04-3.88 33.62-3.88 23 0 19.17 10.93 35.73-1.29 7.76-5.73 23.49 7.33 30.47 9.04 6.54 1.61 11.73 0 22.06 0 11.94 0 15.19-0.79 25.22-3.87 13.86-4.27 29.83 0 44.13 0 10.67 0 10.17 1.15 23.07-11.64 7.8-7.62 22.7 6.37 29.5 7.76 10.5 2.15 7.5 4.13 21 0 7.2-2.23 10.5-3.88 18.9-3.88 29.1 0-4.2 22.6 33.6 5.17 7.1-3.27 16.7-1.29 24.2-1.29s7 13.75 16.8 7.75c7.4-4.56 12.4-0.28 16.8 5.17 5.5 6.7 10.5 6.9 10.5 18.09 0 5.31 20.2 17.31 26.3 29.73 2.7 5.58 3.1 21.62 4.2 27.14 2 10.11-15.5 10.52-5.3 16.8 12.4 7.63 16 7.43 18.9 21.97 1.8 8.62 2.1 19.75 2.1 27.14 0 15.08-16.7 16.51 5.3 23.26 6.7 2.06 1.8 24.72 1 28.43-3.5 17.29 4.6 13.49 7.4 27.14 2.8 13.98-10.5 13.94 1.1 24.56 3.8 3.52 4.2 12.34 4.2 19.38 0 12.8 8.5 16.55 10.5 28.41 2.2 13.9 6.2 34.9 16.8 41.4 1.9 1.2-1 19.1-1.1 19.4-2.3 11.6 2.1 7.9-2.1 20.6-4.8 14.9-28.6 4.4-35.7 0-6.2-3.8-26.6 7.8-35.7 7.8-8.7 0-12.1-6.5-21-6.5-10.4 0-20.8 2.6-32.6 2.6-14.9 0-23.2-11.2-36.8 1.3-5.3 4.9-14.9 5.4-21 3.9-8-2-18.9-2.6-25.2 1.3-10.8 6.6-17.6 4.6-26.3-3.9-1.8-1.8-4.2-2.6-6.3-3.9-7.7-4.7-45.91 3-54.63 5.2-5.93 1.4-16.21 9.5-23.11 7.8-13.56-3.4-28.97-6.5-43.08-6.5h-5.26c-16.17 0 10.67-19.9-22.06-6.5-25.27 10.4-41.73 8.9-61.99 3.9-21.48-5.3-25.69 11.3-47.28-6.5-12.22-10-41.1 13-51.49 19.4-15.23 9.4-22.59-0.7-32.57-12.9-5.62-7-14.77 8-22.07 6.5-9.6-2-9.73 5.1-21.01 5.1-19.26 0-21.49-16.2-33.62-1.3-9.81 12.1-5.27 3.9-17.87 3.9-19.07 0-23.67-3.9-31.52-3.9-7.77 0-17.4-0.9-23.11 2.6-5.47 3.4-11.25 3.3-15.76 0z"/>
+    <path id="path3381" style="stroke-linejoin:round;fill-rule:evenodd;stroke:#000000;stroke-linecap:round;stroke-width:7.8934;fill:#362b2b" d="m515.73 676.95l-50.08 434.35h38.7l40.98-434.35h-29.6z"/>
+    <path id="path3377" style="stroke-linejoin:round;fill-rule:evenodd;stroke:#000000;stroke-linecap:round;stroke-width:7.7212;fill:#322828" d="m735.51 451.08l-13.39 218.13 25.28 2.49 7.75-219.42-19.64-1.2z"/>
+    <path id="path4157" style="stroke-linejoin:round;fill-rule:evenodd;stroke:#000000;stroke-linecap:round;stroke-width:8.1307;fill:#2e922c" d="m754.37 541.43c13.4 0.23 36.29-52.79 56.74-40.18 25.22 15.56 7.21-57.94 29.41-16.85 2.59 4.77 3.39-35.92 16.82-63.52 19.75-40.62 8.23-41.31 55.68 2.6 1.59 1.46 2.8 3.45 4.21 5.18 0.74 0.92 0 2.59 0 3.89 0 32.35 21.09-10.58 30.47 3.89 20.7 31.92 30.59 19.62 45.18-10.37 4.86-10 23.82 12.51 25.22 14.26 8.7 10.68 6.7-1.69 18.9 24.63 0 0.05 5.2-28.93 21-14.26 18 16.62 12 12.62 20 32.4 15.3 37.76-0.9 25.93 23.1 25.93 12.1 0 14.7 12.57 14.7 25.92 0 7.11 3 18.69 7.4 25.93 7.9 13.05 3.8 20.01 1 33.7-3.7 18.47-11.5 24.58-26.3 33.7-12.2 7.55-25.8 11.67-39.9 11.67-14 0-25.5 6.72-38.9 9.07-20.17 3.56-38.06-11.67-57.75-11.67-18.5 0-36.9-2.59-55.68-2.59-30.11 0-63.68-10.78-93.51-18.15-13.72-3.38-25.91-16.4-35.73-28.51-4.5-5.56-9.07-9.41-11.56-15.56-3.96-9.79-6.43-14.9-11.55-23.33-2.18-3.58-2.03 1.71 1.05-7.78z"/>
+    <path id="path4161" style="fill-rule:evenodd;stroke:#000000;stroke-width:8.1307;fill:#925e2c" d="m1033.9 529.77c-5.2 8.41-15.9-8.09-24.2-10.37-32.6-8.94-67.55-5.19-100.88-5.19-15.26 0-34.5-0.7-49.38 3.89-16.92 5.22-35.23 6.18-50.44 15.56-14.24 8.78-25.62 17.35-37.82 32.4-7.09 8.74-6.31 14.73-6.31 25.93 0 12.37 4.21 21.87 4.21 34.99 0 11.46 4.54 17.07 10.5 20.74 7.7 4.75 15.33 10.75 23.12 15.56 9.08 5.6 22.07 8.75 31.52 11.66 15.98 4.93 33.62 2.6 48.33 11.67 5.8 3.57 16.82 1.95 23.12 3.89 14.25 4.39 32.58 0 47.28 0 12.5 0 29.65-3.43 42.03-6.48 16.22-4 37.42 6.71 52.52-2.59 12.6-7.79 25.6-10.71 37.8-20.74 8.7-7.11 8.4-31.36 8.4-42.78 0-16.01 2-32.83-3.1-45.37-3.5-8.61-12.5-19.27-16.8-29.81-3.9-9.53-14.7-7.77-21-11.67-5.9-3.62-12.3-2.94-18.9-1.29z"/>
+    <path id="path4169" style="stroke-linejoin:round;fill-rule:evenodd;stroke:#000000;stroke-linecap:round;stroke-width:8.1307;fill:#e86649" d="m333.04 669.76c-0.92-28.17-3.54-52.67 12.61-72.59 10.52-12.98 23.72-25.56 36.77-36.29 14.67-12.07 22.68-31.63 42.03-37.59 22-6.79 50.14-15.42 71.45-25.93 21.74-10.73 52.69-6.48 75.65-6.48 18.7 0 38.09 0.85 55.68 5.18 24 5.92 51.28-3.1 74.6 6.49 13.62 5.59 11.56 24.55 11.56 41.48 0 14.67-3.15 21.51-3.15 33.7 0 14.74-11.55 38.87-17.86 54.44-2.15 5.29 0 18.77 0 24.63 0 11.07 1.18 20.58-3.16 25.92-3.7 4.57-24 1.3-29.42 1.3-13.1 0-25.82-1.3-38.87-1.3h-50.43c-20.62 0-41.25-5.18-62-5.18h-60.94-35.72c-11.53 0-26.63 4.32-38.88 6.48-6.94 1.22-14.95 0-22.06 0-7.2 0-13.64-7.76-17.86-14.26z"/>
+    <path id="path4173" style="fill-rule:evenodd;stroke:#000000;stroke-width:8.1307;fill:#a29282" d="m331.99 656.8c-1.13 6.72 3.38 10.66 7.35 15.55 4.88 6.02 21.96 2.59 28.37 2.59 11.26 0 11.54-8.71 16.81-16.85 7.46-11.5 14.68-24.14 22.07-36.29 9.21-15.15 36.65-31.44 50.43-36.3 18.43-6.49 33.28-18.84 51.48-23.33 1.76-0.43 3.51-0.86 5.26-1.29 14.9-3.68 31.44 2.59 46.23 2.59 14.91 0 26.4 20.74 43.08 20.74 18.85 0 38.64 10.8 56.73-2.59 9.09-6.73 12.96-10.37 24.17-10.37 9.92 0 16.96-3.28 22.07-11.67 3.17-5.22 6.3-11.5 6.3-16.85 0-7.96 0.42-16.09-1.05-23.33-1.49-7.35-5.46-9.34-9.46-14.26-3.42-4.23-15.48-2.42-19.96-5.19-9.46-5.83-25.9-1.29-36.78-1.29h-18.91c-10.76 0-14.57-2.6-24.16-2.6-7.63 0-16.18 0.85-23.12-1.29-6.31-1.95-13.56-1.3-21.01-1.3-8.61 0-18.41-1.13-26.27 1.3-7.76 2.39-18.07 2.59-26.27 2.59-3.04 0-10.09 10.27-15.76 11.67-14.79 3.65-19.86 1.88-31.52 9.07-7.16 4.42-21.46 8.78-27.32 11.67-10.53 5.19-13.86-2.34-22.06 7.77-5.23 6.46-11.48 12.2-17.86 22.04-3.62 5.57-12.94 7.1-17.87 11.67-6.67 6.17-14.89 10.59-18.91 15.55-4.81 5.94-8.4 16.85-10.51 22.04-3.41 8.42-3.77 19.94-5.25 27.22-1.37 6.75-3.71 14.35-6.3 20.74z"/>
+    <path id="path3379" style="stroke-linejoin:round;fill-rule:evenodd;stroke:#000000;stroke-linecap:round;stroke-width:8.1307;fill:#362b2b" d="m299.28 663.64c43.14 0 885.72 0.4 885.72 0.4l8.3 34.39-905.77 3.67 11.75-38.46z"/>
+    <path id="path4163" style="stroke:#000000;stroke-width:8.1307;fill:none" d="m870.99 520.69v0c0-2.51-12.56 23.12-16.81 44.07-2.81 13.9-1.41 30.31-4.2 44.08-2.13 10.49-2.06 19.24-4.2 29.81-1.87 9.2-3.67 15.62-2.1 23.33"/>
+    <path id="path4165" style="stroke:#000000;stroke-width:8.1307;fill:none" d="m941.39 515.51c-1.26 6.23-19.82 21.01-22.06 37.59-0.53 3.93-1.4 7.78-2.1 11.66-2.05 11.34-6.31 19.72-6.31 31.11 0 9.35-0.3 19.65-2.1 28.52-1.22 6.01-1.81 14.12-3.15 20.74-0.99 4.88 0 11.75 0 16.85"/>
+    <path id="path4167" style="stroke:#000000;stroke-width:8.7786;fill:none" d="m1013.6 523.65c-2.5 10.82-15.71 27.56-15.71 42.05 0 8.69-6.73 24.06-8.45 31.54-2.56 11.14-3.63 22.47-3.63 34.17v26.29 2.63"/>
+    <path id="path4179" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m822.16 906.03l-6.33 3.55-2.31 1.98 0.4 4.13 2.08 2.13 2.69-0.25 2.06-0.27 0.88-1.68-0.03-2.41 0.56-7.18z"/>
+    <path id="path4181" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m825.95 884.83l-6.94-0.53-2.79 0.4-1.22 3.88 1.03 3.09 2.46 1.34 1.92 0.95 1.42-0.98 0.9-2.13 3.22-6.02z"/>
+    <path id="path4183" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m835.83 923.91l-6.75 2.07-2.56 1.43-0.22 4.15 1.73 2.56 2.68 0.36 2.07 0.2 1.11-1.46 0.33-2.37 1.61-6.94z"/>
+    <path id="path4185" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m812.07 942.44l-2.53 7.99-0.54 3.4 2.62 2.62 2.7-0.26 1.78-2.49 1.33-1.96-0.32-1.97-1.38-1.7-3.66-5.63z"/>
+    <path id="path4187" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m803.92 917.15l-5.94 4.45-2.11 2.3 0.79 4.04 2.28 1.81 2.64-0.64 2.02-0.57 0.71-1.8-0.25-2.38-0.14-7.21z"/>
+    <path id="path4189" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m879.03 920.72l-5.47 5.28-1.87 2.59 1.17 3.9 2.43 1.47 2.56-1.02 1.95-0.86 0.54-1.89-0.48-2.33-0.83-7.14z"/>
+    <path id="path4191" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m876.16 959.03l-0.93 8.5 0.12 3.46 3.05 1.79 2.57-1.04 1.26-2.93 0.91-2.3-0.69-1.81-1.66-1.26-4.63-4.41z"/>
+    <path id="path4193" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m863.42 936.81l-4.93 6.05-1.61 2.85 1.54 3.7 2.56 1.1 2.44-1.39 1.86-1.14 0.35-1.95-0.7-2.24-1.51-6.98z"/>
+    <path id="path4195" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m908.31 884.75l-6.33 3.55-2.31 1.97 0.4 4.13 2.08 2.14 2.68-0.25 2.06-0.27 0.88-1.69-0.02-2.4 0.56-7.18z"/>
+    <path id="path4197" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m898.22 921.16l-2.53 7.99-0.54 3.4 2.62 2.62 2.69-0.26 1.79-2.49 1.32-1.97-0.32-1.96-1.37-1.7-3.66-5.63z"/>
+    <path id="path4199" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m893.22 853.09l-5.95 4.45-2.1 2.3 0.79 4.04 2.27 1.81 2.65-0.63 2.01-0.57 0.72-1.8-0.26-2.39-0.13-7.21z"/>
+    <path id="path4201" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m827.29 849.84l-6.32 3.55-2.31 1.97 0.39 4.13 2.09 2.14 2.68-0.25 2.06-0.27 0.88-1.69-0.02-2.4 0.55-7.18z"/>
+    <path id="path4203" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m855.35 827.78l-6.94-0.53-2.79 0.41-1.22 3.88 1.02 3.08 2.47 1.34 1.92 0.95 1.42-0.97 0.89-2.14 3.23-6.02z"/>
+    <path id="path4205" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m847.06 848.98l-4.93 6.05-1.6 2.84 1.54 3.7 2.55 1.11 2.45-1.39 1.85-1.14 0.35-1.96-0.7-2.24-1.51-6.97z"/>
+    <path id="path4207" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m909.28 853.36l-6.33 3.55-2.31 1.97 0.4 4.13 2.08 2.14 2.69-0.25 2.05-0.27 0.88-1.69-0.02-2.4 0.56-7.18z"/>
+    <path id="path4209" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m907.05 829.36l-2.53 7.98-0.54 3.41 2.62 2.62 2.7-0.27 1.79-2.48 1.32-1.97-0.32-1.96-1.38-1.7-3.66-5.63z"/>
+    <path id="path4211" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m875.79 815.73l-5.95 4.45-2.1 2.3 0.79 4.04 2.27 1.81 2.65-0.64 2.01-0.56 0.72-1.81-0.26-2.38-0.13-7.21z"/>
+    <path id="path4215" style="fill-rule:evenodd;stroke:#000000;stroke-width:8.1307;fill:#ca3939" d="m855.65 861.21c-3.16-0.63-8.13-0.24-10.4 2.57-4.46 5.5-5.81 7.72-10.4 11.12-2.8 2.07-2.08 8.69-2.08 12.82 0 6.13-1.24 9.77 0.7 14.54 1.99 4.93 3.29 11.54 5.54 17.11 2.73 6.72 4.29 7.69 11.09 7.69 4.34 0 8.61-0.17 11.09-1.71 4.4-2.71 6.85-4.17 9.71-7.7 3.3-4.06 3.25-6.85 6.93-10.26 1.75-1.61 5.23-14.31 5.55-16.25 0.92-5.69-1.39-10.38-1.39-15.39 0-6.47-3.66-7.94-6.24-11.12-2.31-2.85-9.68-5.11-13.17-7.69-1.48-1.1-5.35 3.49-6.93 4.27z"/>
+    <path id="path4225" style="stroke-linejoin:round;fill-rule:evenodd;stroke:#000000;stroke-linecap:round;stroke-width:8.1307;fill:#72483d" d="m312.88 814.26c-13.08 2.69-64.07 15.44-64.07-12.95 0-11.09 5.17-20.32 7.36-31.1 4.49-22.17 27.54-23.18 43.06-25.91 24.25-4.28 45.8-2.08 69.32-10.37 18.93-6.68 42.32-2.59 61.96-2.59 15.68 0 13.71 0.03 28.36 9.07 7.48 4.61 11.04 43.49 12.6 53.12 3.77 23.24-5.34 38.26-8.4 60.9-0.33 2.49-2.1 4.32-3.15 6.48-3.79 7.8-25.28 16.9-31.51 22.03-13.76 11.32-19.74 18.4-30.46 5.18-8.6-10.62-46.18-5.41-56.71-7.77-5.17-1.16-11.81-26.01-13.65-29.81-7.33-15.05-9.75-17.21-17.86-27.21-7.45-9.18 11.79-5.51-3.15-11.66"/>
+    <path id="path4219" style="fill-rule:evenodd;stroke:#000000;stroke-width:8.1307;fill:#b46c28" d="m253.02 1109.7c-11.56-1.7-12.99-23.1-14.71-33.7-4.44-27.4-0.57-23.2-12.6-47.9-5.4-11.1-14.11-11.4-16.81-24.7-1.21-5.95-3.15-10.14-3.15-18.1v-27.21c0-9.41 2.73-16.84 4.2-25.92 1.49-9.16 13.97-13.79 21.01-18.14 9.35-5.77 20.24-9.8 30.46-12.95 5.72-1.77 14.15 0 19.95 0 11.27 0 24.11-2.59 35.71-2.59 7.67 0 30.74-11.54 38.86-15.55 10.32-5.1 27.64-9.5 38.86-12.96 10.79-3.33 28.69 12.16 36.76 18.14 6.21 4.6 10.51 19.75 10.51 29.8 0 8.95 9.45 7.34 9.45 18.14 0 8.82 4.2 19.15 4.2 29.8 0 13.99-3.15 27.32-3.15 40.14 0 13.7-7.99 26.5-10.5 38.9-1.34 6.6 3.15 20 3.15 28.5 0 7.6-10.38 12.9-15.76 16.9-5.96 4.4-12.38 6.3-18.9 10.3-7.24 4.5-13.25 2.7-21.01 6.5-6.48 3.2-19.63 0-26.25 0h-29.41-22.06-19.95-24.16c-5.86 0-9.14-0.2-14.7 2.6z"/>
+    <path id="path4221" style="fill-rule:evenodd;stroke:#000000;stroke-width:8.1307;fill:#2e922c" d="m347.54 1105.8c-8.17 0-1.16-20.4-4.2-29.8-12.38-38.2-14.98-77.14-30.46-115.32-7.3-18.02-19.95-51.08-19.95-71.26 0-10.72-2.57-18.01 0-25.92 2.24-6.93 9.7-7.77 16.8-7.77 3.99 0 12.6 23.78 12.6 28.5 0 2.92 20.25 39.83 25.21 50.54 9.5 20.5 30.46 69.93 30.46 93.33 0 13.8 5.64 28.7 7.35 41.4 1.38 10.2 3.15 17.6 3.15 28.5 0 7.7-9.23 10.4-14.7 10.4-7.49 0-12.47-3.9-21.01-3.9-2.92 0-12.33 1.3-12.6 1.3"/>
+    <path id="path4227" style="stroke-linejoin:round;fill-rule:evenodd;stroke:#000000;stroke-linecap:round;stroke-width:8.1307;fill:#694b42" d="m405.31 770.21c-7.48-9.23-39.09-6.64-42.01 7.77-5.54 27.32-5.26 5.34-5.26 29.81 0 12.49 3.39 19.39 7.36 25.91 5.43 8.94 32.43 11.34 40.96 15.55 6.48 3.2 21.66 0 28.35 0 3.32 0 8.82-13.7 9.46-16.85 2.14-10.59 11.55-25.43 11.55-32.39 0-10.67-5.69-16.4-7.35-24.62-0.85-4.18-23.02-10.86-26.26-11.66-4.22-1.04-5.72 7.78-11.55 7.78"/>
+    <path id="path4229" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m814.68 848.12l-5.94 4.45-2.1 2.3 0.79 4.04 2.27 1.81 2.64-0.63 2.02-0.57 0.71-1.8-0.25-2.39-0.14-7.21z"/>
+    <path id="path4231" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m816.41 826.51l-6.94 0.49-2.73 0.81-0.84 4.03 1.31 2.92 2.58 0.96 2 0.67 1.31-1.18 0.69-2.25 2.62-6.45z"/>
+    <path id="path4233" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m797.66 871.36l-4.31 6.73-1.32 3.06 1.88 3.45 2.64 0.72 2.3-1.73 1.73-1.4 0.16-2-0.91-2.12-2.17-6.71z"/>
+    <path id="path4235" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m898.18 814.4l-5.94 4.45-2.11 2.3 0.79 4.05 2.28 1.81 2.64-0.64 2.02-0.57 0.71-1.8-0.26-2.38-0.13-7.22z"/>
+    <path id="path4237" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m915.82 861.11l-1.75 8.3-0.21 3.46 2.86 2.21 2.65-0.65 1.53-2.73 1.13-2.15-0.51-1.9-1.53-1.49-4.17-5.05z"/>
+    <path id="path4239" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m881.13 828.11l-5.47 5.28-1.87 2.6 1.17 3.89 2.43 1.47 2.57-1.02 1.95-0.86 0.53-1.89-0.48-2.33-0.83-7.14z"/>
+    <path id="path4241" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m840.65 948.74l-6.33 3.55-2.31 1.98 0.4 4.13 2.08 2.13 2.69-0.25 2.05-0.27 0.88-1.68-0.02-2.41 0.56-7.18z"/>
+    <path id="path4243" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m856 966.43l-6.94-0.54-2.79 0.41-1.22 3.88 1.02 3.09 2.47 1.33 1.92 0.96 1.42-0.98 0.89-2.13 3.23-6.02z"/>
+    <path id="path4245" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m893.46 939.34l-4.93 6.05-1.6 2.84 1.54 3.7 2.55 1.11 2.45-1.39 1.85-1.14 0.35-1.96-0.7-2.24-1.51-6.97z"/>
+    <path id="path4247" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m938.35 887.28l-6.33 3.55-2.31 1.97 0.4 4.13 2.08 2.13 2.69-0.24 2.06-0.27 0.88-1.69-0.03-2.4 0.56-7.18z"/>
+    <path id="path4249" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m928.26 923.69l-2.53 7.98-0.54 3.41 2.62 2.62 2.7-0.27 1.78-2.48 1.32-1.97-0.32-1.96-1.37-1.7-3.66-5.63z"/>
+    <path id="path4251" style="fill-rule:evenodd;stroke:#000000;stroke-width:1.6331px;fill:#000000" d="m920.11 898.39l-5.95 4.45-2.1 2.3 0.79 4.04 2.27 1.82 2.65-0.64 2.02-0.57 0.71-1.8-0.26-2.38-0.13-7.22z"/>
+  </g>
+  <metadata>
+    <rdf:RDF>
+      <cc:Work>
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+        <cc:license rdf:resource="http://creativecommons.org/licenses/publicdomain/"/>
+        <dc:publisher>
+          <cc:Agent rdf:about="http://openclipart.org/">
+            <dc:title>Openclipart</dc:title>
+          </cc:Agent>
+        </dc:publisher>
+      </cc:Work>
+      <cc:License rdf:about="http://creativecommons.org/licenses/publicdomain/">
+        <cc:permits rdf:resource="http://creativecommons.org/ns#Reproduction"/>
+        <cc:permits rdf:resource="http://creativecommons.org/ns#Distribution"/>
+        <cc:permits rdf:resource="http://creativecommons.org/ns#DerivativeWorks"/>
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+</svg>
+`;
+        const lunchboxImage = new Image();
+        const svgBlob = new Blob([svgData], { type: 'image/svg+xml' });
+        lunchboxImage.src = URL.createObjectURL(svgBlob);
+
+
+        // Level 7 Variables
+        let swarmTimer = 0;
+        let swarmActive = false;
+        let swarmCount = 0;
+        let swarmEnemies = [];
+        let eliteUFOs = [];
+        let meteorShowerActive = false;
+        let meteorShowerTimer = 0;
+        let meteorShowerTriggered = {
+            at45: false,
+            at25: false
+        };
+
+        // Level 8 Variables
+        let miniBossesDefeated = 0;
+        let miniBossActive = false;
+        let miniBossSpawnTimer = 0;
+        let currentMiniBoss = null;
+
+        // Level 9 Variables
+        let level9WaveCount = 0;
+        let level9WaveTimer = 0;
+        let level9IntensityLevel = 1;
+
+        //Level 10 Variables
+        let motherShip = null;
+        let motherShipDefeated = false;
+        let bossEntryComplete = false;
+        let mothershipKilledBeforeTimeout = false;  // Track if killed before timer ends
+        let level10TimeoutReached = false;          // Track if 90s timer expired
+        let level10VictoryProcessed = false;        // Prevent double-processing
+
         /**************************************************
-        * ANCHOR : Event handles
+        * SECTION : Event handles
         ***************************************************/
 
+        // ANCHOR - Mouse Event
         // Mouse tracking and controls
         canvas.addEventListener('mousemove', (e) => {
             spaceship.targetX = e.clientX;
@@ -3272,11 +4022,37 @@
             isMouseDown = false;
         });
 
-        // Prevent context menu on right click
-        canvas.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
+        // Mouse wheel rotation control
+        canvas.addEventListener('wheel', (e) => {
+            if (gameState === 'playing') {
+                e.preventDefault();
+
+                const delta = Math.sign(e.deltaY);
+                const wheelRotationSpeed = 0.12;
+
+                if (delta > 0) {
+                    spaceship.rotation += wheelRotationSpeed;
+                } else if (delta < 0) {
+                    spaceship.rotation -= wheelRotationSpeed;
+                }
+
+                // Add soundEnabled check here too
+                if (audioContext && soundEnabled) {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(400 + (delta * 100), audioContext.currentTime);
+                    gainNode.gain.setValueAtTime(0.05, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.05);
+                }
+            }
         });
 
+        // ANCHOR - Button Event
         document.getElementById('pauseBtn').addEventListener('click', togglePause);
         document.getElementById('musicBtn').addEventListener('click', () => {
             toggleMusic();
@@ -3287,6 +4063,7 @@
             backToMainMenu();
         });
 
+        // ANCHOR - Keyboard Event
         document.addEventListener('keydown', (e) => {
 
             // Block all game inputs when debug level selection is active
@@ -3322,13 +4099,27 @@
             if (e.key === 's' || e.key === 'S') {
                 spaceship.rotation = 0;
             }
+
             if (e.code === 'Space' && gameState === 'playing') {
                 e.preventDefault(); // Prevent page scroll
+
+                // Check if any uses remaining
+                if (homingWingmanUsesRemaining <= 0) {
+                    textAnimations.show(
+                        'No Homing Wingmen Available!',
+                        canvas.width / 2,
+                        canvas.height / 2 - 80,
+                        60,
+                        { fontSize: 24, startColor: 0, colorRange: 60 }
+                    );
+                    return;
+                }
 
                 if (homingWingmanCooldown <= 0) {
                     // Launch homing wingman from spaceship position
                     homingWingmen.push(new HomingWingman(spaceship.x, spaceship.y));
                     homingWingmanCooldown = homingWingmanCooldownTime;
+                    homingWingmanUsesRemaining--;
 
                     initAudio();
                     playPowerUpSound();
@@ -3337,8 +4128,27 @@
                     for (let i = 0; i < 20; i++) {
                         fireworks.push(new Particle(spaceship.x, spaceship.y));
                     }
+
+                    // Show uses remaining
+                    textAnimations.show(
+                        `🚀 HOMING WINGMAN DEPLOYED! (${homingWingmanUsesRemaining} left)`,
+                        canvas.width / 2,
+                        canvas.height / 2 - 150,
+                        60,
+                        { fontSize: 28, startColor: 180, colorRange: 120 }
+                    );
+                } else {
+                    // Cooldown message
+                    textAnimations.show(
+                        `Cooldown: ${Math.ceil(homingWingmanCooldown / 60)}s`,
+                        canvas.width / 2,
+                        canvas.height / 2 - 80,
+                        60,
+                        { fontSize: 24, startColor: 60, colorRange: 60 }
+                    );
                 }
             }
+
             // Toggle debug mode with Ctrl+Shift+D or Ctrl+Shift+0
             if (ENABLE_DEBUG && e.ctrlKey && e.shiftKey && (e.key === '0' || e.key === 'D' || e.key === 'd')) {
                 debugMode = !debugMode;
@@ -3385,7 +4195,6 @@
                 gameState = 'paused'; // Pause game while selecting
             }
 
-
             // Debug level selection: Number input
             if (debugLevelSelectMode) {
                 if (e.key >= '0' && e.key <= '9') {
@@ -3428,7 +4237,7 @@
                 }
             }
 
-            // ANCHOR - Protective Weapons (Level 5+)
+            // Protective Weapons (Level 5+)
             if (currentLevel >= 5 && gameState === 'playing') {
                 if (e.key === 'e' || e.key === 'E') {
                     activateEMP();
@@ -3437,7 +4246,6 @@
                     deployDecoy();
                 }
             }
-
         });
 
         document.addEventListener('keyup', (e) => {
@@ -3450,34 +4258,10 @@
             }
         });
 
-        // Mouse wheel rotation control
-        canvas.addEventListener('wheel', (e) => {
-            if (gameState === 'playing') {
-                e.preventDefault();
-
-                const delta = Math.sign(e.deltaY);
-                const wheelRotationSpeed = 0.12;
-
-                if (delta > 0) {
-                    spaceship.rotation += wheelRotationSpeed;
-                } else if (delta < 0) {
-                    spaceship.rotation -= wheelRotationSpeed;
-                }
-
-                // Add soundEnabled check here too
-                if (audioContext && soundEnabled) {
-                    const oscillator = audioContext.createOscillator();
-                    const gainNode = audioContext.createGain();
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioContext.destination);
-                    oscillator.type = 'sine';
-                    oscillator.frequency.setValueAtTime(400 + (delta * 100), audioContext.currentTime);
-                    gainNode.gain.setValueAtTime(0.05, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
-                    oscillator.start(audioContext.currentTime);
-                    oscillator.stop(audioContext.currentTime + 0.05);
-                }
-            }
+        // ANCHOR - Misc Event
+        // Prevent context menu on right click
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
         });
 
         window.addEventListener('resize', () => {
@@ -3485,6 +4269,9 @@
             canvas.height = window.innerHeight;
         });
 
+        /**************************************************
+        * !SECTION : Event handles
+        ***************************************************/
 
         /**************************************************
          * SECTION : Functions
@@ -3492,8 +4279,10 @@
 
         // SECTION - Control background music 
         function initAudio() {
-            if (!audioContext) {
+            if (!audioContext || !soundPlayer) {
+                console.log('in bug');
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                soundPlayer = new SoundPlayer(audioContext);
             }
             // Start background music on first user interaction
             startMusic();
@@ -3522,102 +4311,113 @@
         // !SECTION - Control background music 
 
         // SECTION - Sound Effects
+
+        // ANCHOR - Random select background music
+        function changeBackgroundMusicRandom() {
+            let newTrackIndex;
+
+            do {
+                newTrackIndex = Math.floor(Math.random() * bgMusicTracksWithNames.length);
+            } while (newTrackIndex === currentTrackIndex && bgMusicTracksWithNames.length > 1);
+
+            currentTrackIndex = newTrackIndex;
+            bgMusic.src = bgMusicTracksWithNames[currentTrackIndex].url;
+
+            if (musicPlaying) {
+                bgMusic.play().catch(e => console.log('Audio play failed:', e));
+            }
+
+            // ✅ Show track name on screen (optional)
+            if (bgMusicTracksWithNames[currentTrackIndex]) {
+
+                // Optional: Show on main menu
+                setTimeout(() => {
+                    const trackDisplay = document.createElement('div');
+                    trackDisplay.style.position = 'fixed';
+                    trackDisplay.style.bottom = '20px';
+                    trackDisplay.style.left = '50%';
+                    trackDisplay.style.transform = 'translateX(-50%)';
+                    trackDisplay.style.color = '#00ff88';
+                    trackDisplay.style.fontSize = '18px';
+                    trackDisplay.style.textShadow = '0 0 10px #00ff88';
+                    trackDisplay.style.zIndex = '1000';
+                    trackDisplay.textContent = `♪ ${bgMusicTracksWithNames[currentTrackIndex].name} from www.incompetech.com`;
+                    document.body.appendChild(trackDisplay);
+
+                    // Fade out after 3 seconds
+                    setTimeout(() => {
+                        trackDisplay.style.transition = 'opacity 1s';
+                        trackDisplay.style.opacity = '0';
+                        setTimeout(() => trackDisplay.remove(), 1000);
+                    }, 9000);
+                }, 100);
+            }
+        }
+
         // ANCHOR Play Shoot sound
         function playShootSound() {
-            if (!audioContext || !soundEnabled) return; // Add soundEnabled check
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            oscillator.type = 'square';
-            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-            oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.1);
-            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.1);
+             soundPlayer.play({
+                type: 'square',
+                freq: 800,
+                freqEnds: [200],
+                duration: 0.1,
+                volume: 0.1
+            });
         }
 
         // ANCHOR - Play Explosion Sound
         function playExplosionSound() {
-            if (!audioContext || !soundEnabled) return; // Add soundEnabled check
-            const oscillator1 = audioContext.createOscillator();
-            const gainNode1 = audioContext.createGain();
-            oscillator1.connect(gainNode1);
-            gainNode1.connect(audioContext.destination);
-            oscillator1.type = 'sawtooth';
-            oscillator1.frequency.setValueAtTime(150, audioContext.currentTime);
-            oscillator1.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.3);
-            gainNode1.gain.setValueAtTime(0.2, audioContext.currentTime);
-            gainNode1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-            oscillator1.start(audioContext.currentTime);
-            oscillator1.stop(audioContext.currentTime + 0.3);
+             soundPlayer.play({
+                type: 'sawtooth',
+                freq: 150,
+                freqEnds: [50],
+                duration: 0.3,
+                volume: 0.2
+            });
         }
 
         // ANCHOR - Play Missile Sound
         function playMissileSound() {
-            if (!audioContext || !soundEnabled) return; // Add soundEnabled check
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            oscillator.type = 'triangle';
-            oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
-            oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.2);
-            gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.2);
+            soundPlayer.play({
+                type: 'triangle',
+                freq: 400,
+                freqEnds: [600],
+                duration: 0.2,
+                volume: 0.15
+            });
         }
 
         // ANCHOR - Play Lunch box sound
         function playLunchboxSound() {
-            if (!audioContext || !soundEnabled) return; // Add soundEnabled check
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(1000, audioContext.currentTime);
-            oscillator.frequency.exponentialRampToValueAtTime(1500, audioContext.currentTime + 0.15);
-            oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.3);
-            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.3);
+             soundPlayer.play({
+                type: 'sine',
+                freq: 1000,
+                freqEnds: [1500, 800],
+                duration: 0.3,
+                volume: 0.1
+            });
         }
 
         // ANCHOR - Play Power up sound
         function playPowerUpSound() {
-            if (!audioContext || !soundEnabled) return; // Add soundEnabled check
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
-            oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.1);
-            oscillator.frequency.exponentialRampToValueAtTime(1200, audioContext.currentTime + 0.2);
-            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.2);
+             soundPlayer.play({
+                type: 'sine',
+                freq: 400,
+                freqEnds: [800, 1200],
+                duration: 0.2,
+                volume: 0.2
+            });
         }
 
         // ANCHOR - Play spaceship hit sound
         function playSpaceshipHitSound() {
-            if (!audioContext || !soundEnabled) return; // Add soundEnabled check
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            oscillator.type = 'sawtooth';
-            oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
-            oscillator.frequency.exponentialRampToValueAtTime(150, audioContext.currentTime + 0.4);
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.4);
+            soundPlayer.play({
+                type: 'sawtooth',
+                freq: 300,
+                freqEnds: [150],
+                duration: 0.4,
+                volume: 0.3
+            });
         }
 
         // ANCHOR - Play Super Weapon Sound
@@ -3693,51 +4493,37 @@
 
         // ANCHOR - Play Space Rock hit sound
         function playRockHitSound() {
-            if (!audioContext || !soundEnabled) return; // Add soundEnabled check
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            oscillator.type = 'sawtooth';
-            oscillator.frequency.setValueAtTime(100, audioContext.currentTime);
-            oscillator.frequency.exponentialRampToValueAtTime(80, audioContext.currentTime + 0.2);
-            gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.2);
+             soundPlayer.play({
+                type: 'sawtooth',
+                freq: 100,
+                freqEnds: [80],
+                duration: 0.2,
+                volume: 0.15
+            });
         }
 
         // ANCHOR - Play Formation change sound
         function playFormationChangeSound() {
-            if (!audioContext || !soundEnabled) return; // Add soundEnabled check
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
-            oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.1);
-            oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.2);
-            gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.2);
+             soundPlayer.play({
+                type: 'sine',
+                freq: 600,
+                freqEnds: [800, 600],
+                duration: 0.15,
+                volume: 0.2
+            });            
+            
         }
 
         // ANCHOR - Play Wingman Destroyed Sound
         function playWingmanDestroyedSound() {
-            if (!audioContext || !soundEnabled) return; // Add soundEnabled check
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            oscillator.type = 'sawtooth';
-            oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
-            oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.5);
-            gainNode.gain.setValueAtTime(0.25, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.5);
+             soundPlayer.play({
+                type: 'sawtooth',
+                freq: 400,
+                freqEnds: [100],
+                duration: 0.5,
+                volume: 0.25
+            }); 
+
         }
 
         // ANCHOR - Play Ding sound
@@ -3775,22 +4561,14 @@
 
         // ANCHOR - Play Drone destruction sound
         function playDroneDestroySound() {
-            if (!audioContext || !soundEnabled) return;
+            soundPlayer.play({
+                type: 'square',
+                freq: 800,
+                freqEnds: [100],
+                duration: 0.15,
+                volume: 0.15
+            }); 
 
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-
-            oscillator.type = 'square';
-            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-            oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.15);
-
-            gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
-
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.15);
         }
         // !SECTION - Sound Effects
 
@@ -3798,7 +4576,7 @@
         // ANCHOR - Firework Effect
         function createFirework(x, y) {
             for (let i = 0; i < 30; i++) {
-                fireworks.push(new Particle(x, y));
+                particlePool.get(x, y);
             }
 
             const texts = [
@@ -3825,21 +4603,15 @@
             ];
             const randomText = texts[Math.floor(Math.random() * texts.length)];
 
-            const textDuration = 180;
-            setTimeout(() => {
-                for (let frame = 0; frame < textDuration; frame++) {
-                    setTimeout(() => {
-                        ctx.font = 'bold 48px Arial';
-                        ctx.fillStyle = `hsl(${(frame * 2) % 360}, 100%, ${70 + Math.sin(frame * 0.1) * 20}%)`;
-                        ctx.strokeStyle = 'gold';
-                        ctx.lineWidth = 3;
-                        ctx.textAlign = 'center';
-                        ctx.strokeText(randomText, x, y - 50);
-                        ctx.fillText(randomText, x, y - 50);
-                    }, frame * 16);
-                }
-            }, 0);
+            const textDuration = 30;
 
+            textAnimations.show(
+                randomText,
+                x,
+                y - 50,
+                textDuration,
+                { fontSize: 48, startColor: 0, colorRange: 60 }
+            );
         }
 
         // ANCHOR - Actieve Super Weapon Effect
@@ -4291,6 +5063,38 @@
             }, 0);
         }
 
+        // ANCHOR - Trigger Meteor Shower (Level 7+)
+        function triggerMeteorShower() {
+            meteorShowerActive = true;
+            meteorShowerTimer = LEVEL_7.METEOR_DURATION;
+
+            // Warning sound
+            if (audioContext && soundEnabled) {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.8);
+
+                gainNode.gain.setValueAtTime(0.25, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.8);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.8);
+            }
+
+            textAnimations.show(
+                '☄️ METEOR SHOWER INCOMING! ☄️',
+                canvas.width / 2,
+                canvas.height / 2 - 50,
+                120,
+                { fontSize: 42, startColor: 30, colorRange: 60, colorSpeed: 6 }
+            );
+        }
+
         // ANCHOR - Activate Asteroid Belt Effect
         function activateAsteroidBelt() {
             asteroidBeltActive = true;
@@ -4375,6 +5179,67 @@
             setTimeout(() => {
                 droneWaveActive = false;
             }, droneCount * 200 + 1000);
+        }
+
+        // ANCHOR - Spawn Swarm Wave (Level 7+) - OPTIMIZED
+        function spawnSwarmWave(waveNumber) {
+            swarmActive = true;
+
+            // Dynamic swarm size based on current enemy count
+            const currentEnemies = rockets.length + spaceRocks.length + ufos.length + swarmEnemies.length;
+            const availableSlots = ENTITY_LIMITS.MAX_TOTAL_ENEMIES - currentEnemies;
+            const swarmSize = Math.min(LEVEL_7.SWARM_SIZE, availableSlots, ENTITY_LIMITS.MAX_SWARM_ENEMIES);
+
+            if (swarmSize < 3) {
+                // Not enough room, cancel swarm
+                swarmActive = false;
+                swarmTimer = LEVEL_7.SWARM_INTERVAL - 120; // Retry in 2 seconds
+                return;
+            }
+
+            // Choose spawn side
+            const sides = ['top', 'left', 'right'];
+            const spawnSide = sides[Math.floor(Math.random() * sides.length)];
+
+            // Play warning sound
+            if (audioContext && soundEnabled) {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(500, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(300, audioContext.currentTime + 0.5);
+
+                gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            }
+
+            // Warning message
+            textAnimations.show(
+                `🚨 SWARM WAVE ${waveNumber + 1}! ${swarmSize} HOSTILES! 🚨`,
+                canvas.width / 2,
+                canvas.height / 2 - 50,
+                90,
+                { fontSize: 38, startColor: 0, colorRange: 60, colorSpeed: 5 }
+            );
+
+            // Spawn swarm with stagger - FASTER spawning
+            for (let i = 0; i < swarmSize; i++) {
+                setTimeout(() => {
+                    if (swarmEnemies.length < ENTITY_LIMITS.MAX_SWARM_ENEMIES) {
+                        swarmEnemies.push(new SwarmEnemy(waveNumber, spawnSide));
+                    }
+                }, i * 50); // Reduced from 100ms to 50ms
+            }
+
+            setTimeout(() => {
+                swarmActive = false;
+            }, swarmSize * 50 + 500);
         }
 
         // ANCHOR - Activate Medic Ship healing Effect
@@ -4710,13 +5575,12 @@
             score += POINTS.CRUISER; // Big point reward!
 
             // Extended explosion sequence
-            for (let i = 0; i < 60; i++) {
+            for (let i = 0; i < 30; i++) {
                 setTimeout(() => {
-                    // Multiple explosion points
                     const explosionX = cruiser.x + (Math.random() - 0.5) * cruiser.size;
                     const explosionY = cruiser.y + (Math.random() - 0.5) * cruiser.size;
 
-                    for (let j = 0; j < 5; j++) {
+                    for (let j = 0; j < 2; j++) {
                         fireworks.push(new Particle(explosionX, explosionY));
                     }
                 }, i * 30);
@@ -4789,11 +5653,248 @@
                     }, frame * 16);
                 }
             }, 1000);
+
+            // Level 8+
+            if (currentLevel >= 8 && cruiser.isBoss) {
+                miniBossesDefeated++;
+                miniBossActive = false;
+
+                if (miniBossesDefeated >= LEVEL_8.MINI_BOSSES_REQUIRED) {
+                    // All bosses defeated - level complete!
+                    textAnimations.show(
+                        '🎉 ALL MINI-BOSSES DEFEATED! 🎉',
+                        canvas.width / 2,
+                        canvas.height / 2,
+                        120,
+                        { fontSize: 48, startColor: 120, colorRange: 240 }
+                    );
+                }
+            }
+        }
+
+        // ANCHOR - Spawn Mini-Boss
+        function spawnMiniBoss(bossNumber) {
+            // Reuse Heavy Cruiser class with modifications
+            const boss = new HeavyCruiser();
+            boss.health *= LEVEL_8.BOSS_HEALTH_MULTIPLIER;
+            boss.maxHealth = boss.health;
+            boss.shootInterval = 90; // Faster shooting
+            boss.isBoss = true;
+            boss.bossType = bossNumber % 3; // 0, 1, or 2
+
+            heavyCruisers.push(boss);
+
+            textAnimations.show(
+                `⚔️ MINI-BOSS ${bossNumber + 1}/${LEVEL_8.MINI_BOSSES_REQUIRED} INCOMING! ⚔️`,
+                canvas.width / 2,
+                canvas.height / 2 - 50,
+                120,
+                { fontSize: 42, startColor: 0, colorRange: 60 }
+            );
+        }
+
+        // ANCHOR - Trigger Level 9 Wave
+        function triggerLevel9Wave(waveNumber) {
+            const waveTypes = [
+                { type: 'ROCKET BARRAGE', color: '#ff0000' },
+                { type: 'ASTEROID STORM', color: '#8b7355' },
+                { type: 'UFO FLEET', color: '#00ff88' },
+                { type: 'DRONE SWARM', color: '#ff6600' },
+                { type: 'MIXED ASSAULT', color: '#ff00ff' },
+                { type: 'FINAL WAVE', color: '#ffff00' }
+            ];
+
+            const wave = waveTypes[waveNumber];
+
+            // Visual warning
+            textAnimations.show(
+                `⚡ WAVE ${waveNumber + 1}/${LEVEL_9.MAX_WAVES}: ${wave.type}! ⚡`,
+                canvas.width / 2,
+                canvas.height / 2 - 50,
+                90,
+                { fontSize: 38, startColor: 0, colorRange: 360, colorSpeed: 5 }
+            );
+
+            // Play warning sound
+            if (audioContext && soundEnabled) {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.3);
+
+                gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            }
+
+            // Spawn wave-specific enemies
+            switch (waveNumber) {
+                case 0: // Rocket barrage
+                    for (let i = 0; i < 15; i++) {
+                        setTimeout(() => rockets.push(new Rocket()), i * 100);
+                    }
+                    break;
+
+                case 1: // Asteroid storm
+                    triggerAsteroidBeltWarning();
+                    for (let i = 0; i < 8; i++) {
+                        setTimeout(() => spaceRocks.push(new SpaceRock()), i * 150);
+                    }
+                    break;
+
+                case 2: // UFO fleet
+                    for (let i = 0; i < 5; i++) {
+                        setTimeout(() => {
+                            ufos.push(new UFO());
+                            if (i % 2 === 0 && eliteUFOs.length < 3) {
+                                eliteUFOs.push(new EliteUFO());
+                            }
+                        }, i * 200);
+                    }
+                    break;
+
+                case 3: // Drone swarm
+                    for (let i = 0; i < 10; i++) {
+                        setTimeout(() => kamikazeDrones.push(new KamikazeDrone(waveNumber)), i * 150);
+                    }
+                    break;
+
+                case 4: // Mixed assault
+                    for (let i = 0; i < 3; i++) {
+                        setTimeout(() => {
+                            rockets.push(new Rocket());
+                            spaceRocks.push(new SpaceRock());
+                            ufos.push(new UFO());
+                        }, i * 200);
+                    }
+                    break;
+
+                case 5: // Final wave - everything!
+                    triggerAsteroidBeltWarning();
+                    for (let i = 0; i < 5; i++) {
+                        setTimeout(() => {
+                            rockets.push(new Rocket());
+                            spaceRocks.push(new ToughSpaceRock());
+                            ufos.push(new UFO());
+                            kamikazeDrones.push(new KamikazeDrone(waveNumber));
+                        }, i * 150);
+                    }
+
+                    // Spawn 2 elite UFOs for final push
+                    setTimeout(() => {
+                        eliteUFOs.push(new EliteUFO());
+                        eliteUFOs.push(new EliteUFO());
+                    }, 1000);
+                    break;
+            }
+        }
+
+        // ANCHOR - Level 10 Mothership effect
+        function defeatMotherShip() {
+            mothershipKilledBeforeTimeout = true;
+            motherShipDefeated = true;
+
+            playSuperWeaponSound();
+
+            // Screen shake
+            const originalY = spaceship.y;
+            for (let i = 0; i < 30; i++) {
+                setTimeout(() => {
+                    spaceship.y = originalY + (Math.random() - 0.5) * 15;
+                }, i * 50);
+            }
+            setTimeout(() => { spaceship.y = originalY; }, 1500);
+
+            // Calculate bonus
+            let victoryBonus = LEVEL_10.VICTORY_BONUS;
+            if (spaceshipHits === 0) {
+                victoryBonus += LEVEL_10.NO_DAMAGE_BONUS;
+            }
+
+            score += victoryBonus;
+
+            // Victory message
+            setTimeout(() => {
+                textAnimations.show(
+                    '🎉 MOTHERSHIP DESTROYED! 🎉',
+                    canvas.width / 2,
+                    canvas.height / 2 - 100,
+                    180,
+                    { fontSize: 52, startColor: 0, colorRange: 360, colorSpeed: 8 }
+                );
+
+                textAnimations.show(
+                    `VICTORY BONUS: +${victoryBonus}!`,
+                    canvas.width / 2,
+                    canvas.height / 2,
+                    180,
+                    { fontSize: 36, startColor: 60, colorRange: 120 }
+                );
+            }, 1000);
+
+            // Auto-complete level after 3 seconds
+            setTimeout(() => {
+                levelScore = score;
+                totalScore += levelScore;
+                showGameOver(true);  // Victory!
+            }, 3000);
+
+
+            textAnimations.clearAll();
+            gameState = 'gameOver';
+
+            // Cancel any existing animation loop
+            if (animationId !== -1) {
+                window.cancelAnimationFrame(animationId);
+                animationId = -1; // ✅ Reset after canceling
+            }
+
+            motherShip = null;
         }
 
         // !SECTION: Visual Effect 
 
         // SECTION: Screen Management Functions 
+
+        // ANCHOR - Spatial Partitioning for Performance
+        function getSpatialGrid(entities, cellSize = 100) {
+            const grid = {};
+
+            entities.forEach(entity => {
+                const cellX = Math.floor(entity.x / cellSize);
+                const cellY = Math.floor(entity.y / cellSize);
+                const key = `${cellX},${cellY}`;
+
+                if (!grid[key]) grid[key] = [];
+                grid[key].push(entity);
+            });
+
+            return grid;
+        }
+
+        function getNearbyEntities(x, y, grid, cellSize = 100, range = 1) {
+            const nearby = [];
+            const centerCellX = Math.floor(x / cellSize);
+            const centerCellY = Math.floor(y / cellSize);
+
+            for (let dx = -range; dx <= range; dx++) {
+                for (let dy = -range; dy <= range; dy++) {
+                    const key = `${centerCellX + dx},${centerCellY + dy}`;
+                    if (grid[key]) {
+                        nearby.push(...grid[key]);
+                    }
+                }
+            }
+
+            return nearby;
+        }
+
         function togglePause() {
             if (gameState === 'playing') {
                 gameState = 'paused';
@@ -4825,7 +5926,6 @@
         }
 
         function startGame() {
-
             if (audioContext && audioContext.state === 'suspended') {
                 audioContext.resume();
             }
@@ -4840,6 +5940,7 @@
 
             currentLevel = 1;
             totalScore = 0;
+            continuesUsed = 0;
             continuesRemaining = MAX_CONTINUES;
             showScreen('playing');
             resetGame();
@@ -4879,6 +5980,10 @@
                 bonusText = `<p style="font-size: 24px; color: #00ff88;">All Cruisers Destroyed: +${cruiserBonus}</p>`;
             }
 
+            // Refill homing wingman uses for next level
+            homingWingmanUsesRemaining = homingWingmanMaxUses;
+            homingWingmanCooldown = 0; // Reset cooldown
+
             document.getElementById('levelStats').innerHTML = `
         <h3>Level ${currentLevel} Complete!</h3>
         <p style="font-size: 28px; color: #ffaa00;">Score: ${score}</p>
@@ -4889,7 +5994,16 @@
     `;
         }
 
-        // ANCHOR - Show Game Over
+        // ANCHOR - Show Game Over and continues functions
+        function showLevel10ContinueScreen() {
+            // ✅ PAUSE THE GAME FIRST
+            gameState = 'paused';
+
+            // Clear existing UI
+            textAnimations.clearAll();
+            showContinueOrGameOver('Timeout');
+        }
+
         function showGameOver(won) {
             showScreen('gameOverScreen');
             const title = document.getElementById('gameOverTitle');
@@ -4929,9 +6043,16 @@
                 document.getElementById('continueLevel').textContent = currentLevel;
                 document.getElementById('continuesLeft').textContent = continuesRemaining;
 
-                const reasonText = reason === 'hits'
+                var reasonText = reason === 'hits'
                     ? 'Too many hits!'
                     : 'Too many rockets missed!';
+
+                if (reason === 'Timeout') {
+                    reasonText = 'Timeout and Target still alive!';
+                }
+
+
+
                 document.getElementById('continueReason').textContent = reasonText;
             } else {
                 // No continues left, game over
@@ -4965,6 +6086,14 @@
                 gameState = 'playing';
                 gameStartTime = Date.now(); // Reset timer
 
+                if (currentLevel === 10) {
+                    gameTimer = 30;
+                    level10VictoryProcessed = false;
+                    level10TimeoutReached = false;
+                    mothershipKilledBeforeTimeout = false;
+                    motherShipDefeated = false;
+                }
+
                 // Show continue message
                 setTimeout(() => {
                     for (let frame = 0; frame < 90; frame++) {
@@ -4990,14 +6119,14 @@
             // Player chose not to continue
             showGameOver(false);
             gameState = 'gameOver';
-            //gameLoop();
         }
 
         function nextLevel() {
+
             currentLevel++;
 
-            // Check if all 3 levels completed
-            if (currentLevel > 6) {
+            // Check if all 10 levels completed
+            if (currentLevel > MAX_GAME_LEVEL) {
                 totalScore += levelScore;
                 showGameOver(true); // true = won the game
                 gameState = 'gameOver';
@@ -5006,6 +6135,24 @@
             }
 
             totalScore += levelScore;
+
+            // Grant extra homing wingman at Level 6+
+            if (currentLevel >= 6) {
+                homingWingmanMaxUses = GAME_LIMITS.HOMING_WINGMAN_MAX_USES_LVL_2;
+                homingWingmanUsesRemaining = GAME_LIMITS.HOMING_WINGMAN_USES_REMAINING_LVL_2;
+
+                // Show notification
+                setTimeout(() => {
+                    textAnimations.show(
+                        '🚀 HOMING WINGMAN UPGRADED! 2 USES PER LEVEL! 🚀',
+                        canvas.width / 2,
+                        canvas.height / 2 + 50,
+                        120,
+                        { fontSize: 32, startColor: 180, colorRange: 120, colorSpeed: 3 }
+                    );
+                }, 2000); // Show after level intro
+            }
+
             showScreen('playing');
             resetGame();
             gameState = 'playing';
@@ -5027,10 +6174,10 @@
                 4: 'LEVEL 4: Intensifying!',
                 5: 'LEVEL 5: Half Way There!',
                 6: 'LEVEL 6: Heavy Resistance!',
-                7: 'LEVEL 7: Critical Zone!',
-                8: 'LEVEL 8: Almost There!',
-                9: 'LEVEL 9: Final Push!',
-                10: 'LEVEL 10: FINAL BATTLE!'
+                7: 'LEVEL 7: SWARM INVASION!',
+                8: 'LEVEL 8: BOSS RUSH - Defeat 3 Mini-Bosses!',
+                9: 'LEVEL 9: PERFECT STORM - Survive 90 Seconds!',
+                10: 'LEVEL 10: FINAL BATTLE - Defeat Mothership Alpha!'
             };
 
             const message = introMessages[currentLevel] || `LEVEL ${currentLevel}`;
@@ -5048,6 +6195,39 @@
                     }, frame * 16);
                 }
             }, 0);
+
+            // Show upgrade notification for Level 6
+            if (currentLevel === 6) {
+                setTimeout(() => {
+                    // Show homing wingman upgrade
+                    textAnimations.show(
+                        '🚀 UPGRADE: HOMING WINGMAN x2! 🚀',
+                        canvas.width / 2,
+                        canvas.height / 2 + 100,
+                        120,
+                        { fontSize: 36, startColor: 180, colorRange: 120, colorSpeed: 3 }
+                    );
+
+                    // Play upgrade sound
+                    if (audioContext && soundEnabled) {
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+
+                        oscillator.type = 'sine';
+                        oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+                        oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.2);
+                        oscillator.frequency.exponentialRampToValueAtTime(1200, audioContext.currentTime + 0.4);
+
+                        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+
+                        oscillator.start(audioContext.currentTime);
+                        oscillator.stop(audioContext.currentTime + 0.4);
+                    }
+                }, 2500); // Show 2.5s after level intro
+            }
         }
 
         function resetGame() {
@@ -5064,7 +6244,11 @@
             spaceshipHits = 0; // Reset spaceship hits
             gameState = 'playing';
             gameOverTime = 0;
-            gameTimer = debugMode ? 10 : LEVEL_DURATION_SECONDS;
+
+            gameTimer = currentLevel === 10 ? LEVEL_10.DURATION :
+                currentLevel === 9 ? LEVEL_9.DURATION :
+                    (debugMode ? 10 : LEVEL_DURATION_SECONDS);
+
             gameStartTime = Date.now();
             pausedTime = 0;
             missileMode = false;
@@ -5098,6 +6282,15 @@
                 }
                 w.lastShotTime = 0;
             });
+
+            // Reset homing wingman uses based on level
+            if (currentLevel >= 6) {
+                homingWingmanMaxUses = GAME_LIMITS.HOMING_WINGMAN_MAX_USES_LVL_2;
+                homingWingmanUsesRemaining = GAME_LIMITS.HOMING_WINGMAN_USES_REMAINING_LVL_2;
+            } else {
+                homingWingmanMaxUses = GAME_LIMITS.HOMING_WINGMAN_MAX_USES_LVL_1;
+                homingWingmanUsesRemaining = GAME_LIMITS.HOMING_WINGMAN_USES_REMAINING_LVL_1;
+            }
 
             homingWingmen = [];
             homingWingmanCooldown = 0;
@@ -5150,11 +6343,39 @@
             decoys = [];
             protectivePowerUps = [];
 
+            // Reset Level 7
+            swarmTimer = 0;
+            swarmActive = false;
+            swarmCount = 0;
+            swarmEnemies = [];
+            eliteUFOs = [];
+            meteorShowerActive = false;
+            meteorShowerTimer = 0;
+            meteorShowerTriggered = {
+                at45: false,
+                at25: false
+            };
+
+            // Level 9 resets:
+            level9WaveCount = 0;
+            level9WaveTimer = 0;
+            level9IntensityLevel = 1;
+
+            // Level 10 reset:
+            motherShip = null;
+            motherShipDefeated = false;
+            bossEntryComplete = false;
+            mothershipKilledBeforeTimeout = false;  // Track if killed before timer ends
+            level10TimeoutReached = false;          // Track if 90s timer expired
+            level10VictoryProcessed = false;
+
         }
         // !SECTION: Screen Management Functions
 
         // SECTION - Game Loop
         function gameLoop() {
+
+            textAnimations.update();
 
             // ANCHOR - game loop initial
             ctx.fillStyle = 'rgba(0, 5, 15, 0.1)';
@@ -5313,12 +6534,50 @@
                 const maxTime = debugMode ? 10 : 60; // Debug: 10s, Normal: 60s
                 gameTimer = Math.max(0, maxTime - elapsedTime);
 
-                if (gameTimer <= 0 && missedRockets < 10 && spaceshipHits < MAX_SPACESHIP_HITS) {
-                    levelScore = score + (gameTimer * 10);
-                    totalScore += levelScore;
-                    showLevelUp();
-                    gameState = 'levelUp';
-                    return;
+                if (gameTimer <= 0 && missedRockets < 10 && spaceshipHits <= MAX_SPACESHIP_HITS) {
+
+                    // ✅ LEVEL 10 SPECIAL LOGIC
+                    if (currentLevel === 10) {
+                        if (!level10VictoryProcessed) {
+                            level10TimeoutReached = true;
+                            level10VictoryProcessed = true;
+
+                            // Case 1 & 3: Mothership killed (before or at timeout)
+                            if (mothershipKilledBeforeTimeout || motherShipDefeated) {
+                                levelScore = score;
+                                totalScore += levelScore;
+                                setTimeout(() => showGameOver(true), 2000);
+                                return;
+                            }
+                            // Case 2: Timeout but mothership alive
+                            else if (motherShip && motherShip.health > 0) {
+                                setTimeout(() => showLevel10ContinueScreen(), 2000);
+                                return;
+                            }
+                        }
+                    }
+                    // ✅ ALL OTHER LEVELS (1-9) - Original logic
+                    else {
+                        levelScore = score + (gameTimer * 10);
+
+                        // Level 9 survival bonus
+                        if (currentLevel === 9) {
+                            levelScore += LEVEL_9.SURVIVAL_BONUS;
+                            textAnimations.show(
+                                `🎖️ SURVIVAL BONUS: +${LEVEL_9.SURVIVAL_BONUS}! 🎖️`,
+                                canvas.width / 2,
+                                canvas.height / 2 - 100,
+                                120,
+                                { fontSize: 36, startColor: 60, colorRange: 120 }
+                            );
+                        }
+
+                        totalScore += levelScore;
+                        showLevelUp();
+                        gameState = 'levelUp';
+                        return;
+                    }
+
                 }
 
                 // ANCHOR - Update weapon timers
@@ -5354,15 +6613,15 @@
 
                 // ANCHOR - Define base variables in Game Loop
                 // Base spawn rates
-                let rocketRate = 0.02;
-                let rockRate = 0.01;
-                let ufoRate = 0.008;
+                let rocketRate = 0.015;
+                let rockRate = 0.008;
+                let ufoRate = 0.005;
                 let medicSpawnRate = 0.002;
                 let attackDroneSpawnRate = 0.0015;
 
                 // ANCHOR - Level 4+ intensity multiplier
                 if (currentLevel >= 4) {
-                    const intensityMultiplier = 1.2; // REDUCED from 1.5 (was +50%, now +20%)
+                    const intensityMultiplier = 1.15; // REDUCED from 1.5 (was +50%, now +20%)
                     rocketRate *= intensityMultiplier;
                     rockRate *= intensityMultiplier;
                     ufoRate *= intensityMultiplier;
@@ -5442,7 +6701,7 @@
 
                 // ANCHOR - Level 6: Heavy Cruiser spawns + enhanced enemies
                 if (currentLevel >= 6) {
-                    const intensityMultiplier = 1.3; // Increased from 1.2
+                    const intensityMultiplier = 1.25; // Increased from 1.2
                     rocketRate *= intensityMultiplier;
                     rockRate *= intensityMultiplier;
                     ufoRate *= intensityMultiplier;
@@ -5477,6 +6736,412 @@
                     rockRate = 0; // Don't double-spawn in same frame
                 }
 
+                // ANCHOR - Entity Spawn with Limits (Level 7+)
+                if (currentLevel >= 7) {
+                    const intensityMultiplier = LEVEL_7.INTENSITY;
+
+                    // Calculate total enemy count
+                    const totalEnemies = rockets.length + spaceRocks.length + ufos.length +
+                        swarmEnemies.length + eliteUFOs.length + kamikazeDrones.length;
+
+                    // ONLY SPAWN IF BELOW LIMITS
+                    if (totalEnemies < ENTITY_LIMITS.MAX_TOTAL_ENEMIES) {
+
+                        // Spawn rockets (with limit)
+                        if (rockets.length < ENTITY_LIMITS.MAX_ROCKETS && Math.random() < rocketRate * intensityMultiplier) {
+                            rockets.push(new Rocket());
+                        }
+
+                        // Spawn rocks (with limit)
+                        if (spaceRocks.length < ENTITY_LIMITS.MAX_ROCKS && Math.random() < rockRate * intensityMultiplier) {
+                            spaceRocks.push(new SpaceRock());
+                        }
+
+                        // Spawn regular UFOs (with limit)
+                        if (ufos.length < ENTITY_LIMITS.MAX_UFOS && Math.random() < ufoRate * intensityMultiplier) {
+                            ufos.push(new UFO());
+                        }
+
+                        // Spawn Elite UFOs (with limit) - REDUCED PRIORITY
+                        if (eliteUFOs.length < ENTITY_LIMITS.MAX_ELITE_UFOS &&
+                            totalEnemies < ENTITY_LIMITS.MAX_TOTAL_ENEMIES * 0.7 && // Only spawn if <70% capacity
+                            Math.random() < LEVEL_7.ELITE_UFO_SPAWN_RATE) {
+                            eliteUFOs.push(new EliteUFO());
+                        }
+                    }
+
+                    // Swarm wave system - CONTROLLED SPAWNING
+                    if (!swarmActive && swarmCount < LEVEL_7.MAX_SWARMS) {
+                        swarmTimer++;
+                        if (swarmTimer >= LEVEL_7.SWARM_INTERVAL) {
+                            // ONLY spawn swarm if there's room
+                            if (totalEnemies < ENTITY_LIMITS.MAX_TOTAL_ENEMIES * 0.5) { // <50% capacity
+                                spawnSwarmWave(swarmCount);
+                                swarmCount++;
+                                swarmTimer = 0;
+                            } else {
+                                // Delay swarm if too crowded
+                                swarmTimer = LEVEL_7.SWARM_INTERVAL - 60; // Retry in 1 second
+                            }
+                        }
+                    }
+
+                    // Meteor shower events - REDUCED SPAWN
+                    if (!meteorShowerActive) {
+                        if (gameTimer === 45 && !meteorShowerTriggered.at45) {
+                            meteorShowerTriggered.at45 = true;
+                            triggerMeteorShower();
+                        } else if (gameTimer === 25 && !meteorShowerTriggered.at25) {
+                            meteorShowerTriggered.at25 = true;
+                            triggerMeteorShower();
+                        }
+                    }
+
+                    // Meteor shower spawning - WITH LIMIT
+                    if (meteorShowerActive) {
+                        meteorShowerTimer--;
+
+                        // ONLY spawn if below rock limit
+                        if (spaceRocks.length < ENTITY_LIMITS.MAX_ROCKS &&
+                            Math.random() < LEVEL_7.METEOR_SPAWN_RATE) {
+                            spaceRocks.push(new SmallAsteroid());
+                        }
+
+                        if (meteorShowerTimer <= 0) {
+                            meteorShowerActive = false;
+                            textAnimations.show(
+                                'Meteor Shower Cleared!',
+                                canvas.width / 2,
+                                canvas.height / 2 - 50,
+                                60,
+                                { fontSize: 32, startColor: 120, colorRange: 120 }
+                            );
+                        }
+                    }
+
+                    // Limit enemy bullets
+                    if (enemyBullets.length > ENTITY_LIMITS.MAX_ENEMY_BULLETS) {
+                        enemyBullets.splice(0, 5); // Remove oldest 5
+                    }
+                }
+
+                // ANCHOR - Level 8: Mini-Boss Rush
+                if (currentLevel >= 8) {
+                    // Reduce normal enemy spawns
+                    rocketRate *= LEVEL_8.ENEMY_SPAWN_REDUCTION;
+                    rockRate *= LEVEL_8.ENEMY_SPAWN_REDUCTION;
+                    ufoRate *= LEVEL_8.ENEMY_SPAWN_REDUCTION;
+
+                    // Mini-boss spawning
+                    if (!miniBossActive && miniBossesDefeated < LEVEL_8.MINI_BOSSES_REQUIRED) {
+                        miniBossSpawnTimer++;
+
+                        if (miniBossSpawnTimer >= LEVEL_8.BOSS_SPAWN_INTERVAL || miniBossesDefeated === 0) {
+                            spawnMiniBoss(miniBossesDefeated);
+                            miniBossSpawnTimer = 0;
+                            miniBossActive = true;
+                        }
+                    }
+                }
+
+                // ANCHOR - Level 9: Perfect Storm Survival
+                if (currentLevel >= 9) {
+                    // Base intensity multiplier
+                    const baseMultiplier = LEVEL_9.INTENSITY_MULTIPLIER;
+
+                    // Calculate wave-based intensity (increases each wave)
+                    const waveBonus = 1 + (level9WaveCount * 0.15); // +15% per wave
+                    const totalMultiplier = baseMultiplier * waveBonus;
+
+                    // Apply multipliers to all enemy types
+                    rocketRate *= totalMultiplier;
+                    rockRate *= totalMultiplier;
+                    ufoRate *= totalMultiplier;
+                    medicSpawnRate *= 1.5; // More support items
+                    attackDroneSpawnRate *= 1.5;
+
+                    // Wave system
+                    level9WaveTimer++;
+                    if (level9WaveTimer >= LEVEL_9.WAVE_INTERVAL && level9WaveCount < LEVEL_9.MAX_WAVES) {
+                        triggerLevel9Wave(level9WaveCount);
+                        level9WaveCount++;
+                        level9IntensityLevel++;
+                        level9WaveTimer = 0;
+                    }
+
+                    // Random elite UFO spawns
+                    if (eliteUFOs.length < 2 && Math.random() < LEVEL_9.ELITE_SPAWN_RATE) {
+                        eliteUFOs.push(new EliteUFO());
+                    }
+
+                    // Occasional heavy cruiser
+                    if (heavyCruisers.length === 0 && Math.random() < LEVEL_9.CRUISER_SPAWN_RATE) {
+                        const cruiser = new HeavyCruiser();
+                        cruiser.health = 10; // Reduced HP for Level 9
+                        cruiser.maxHealth = 10;
+                        heavyCruisers.push(cruiser);
+                    }
+
+                    // Random asteroid belt triggers
+                    if (!asteroidBeltActive && Math.random() < LEVEL_9.ASTEROID_BELT_CHANCE) {
+                        triggerAsteroidBeltWarning();
+                    }
+
+                    // Spawn swarm enemies constantly (not in waves)
+                    if (swarmEnemies.length < LEVEL_9.SWARM_SIZE && Math.random() < 0.02) {
+                        const side = ['top', 'left', 'right'][Math.floor(Math.random() * 3)];
+                        swarmEnemies.push(new SwarmEnemy(level9IntensityLevel, side));
+                    }
+                }
+
+                // ANCHOR - Level 10: kill Mothership
+                if (currentLevel >= 10) {
+                    // Spawn mothership at start
+                    if (!motherShip && !motherShipDefeated) {
+                        motherShip = new MotherShipAlpha();
+
+                        // Entry announcement
+                        textAnimations.show(
+                            '⚔️ MOTHERSHIP ALPHA DETECTED! ⚔️',
+                            canvas.width / 2,
+                            canvas.height / 2 - 50,
+                            150,
+                            { fontSize: 48, startColor: 0, colorRange: 60 }
+                        );
+
+                        playSuperWeaponSound();
+                    }
+
+                    // Update mothership
+                    if (motherShip && !motherShipDefeated) {
+                        motherShip.update();
+                        motherShip.draw();
+
+                        // Check bullet collisions with mothership
+                        for (let i = bullets.length - 1; i >= 0 && motherShip != null; i--) {
+                            const bullet = bullets[i];
+                            const dist = Math.hypot(bullet.x - motherShip.x, bullet.y - motherShip.y);
+
+                            if (dist < motherShip.size / 2) {
+                                motherShip.health--;
+                                motherShip.hitFlash = 10;
+                                bullets.splice(i, 1);
+                                playRockHitSound();
+
+                                // Victory!
+                                if (motherShip.health <= 0) {
+                                    defeatMotherShip();
+                                }
+
+                                break;
+                            }
+                        }
+
+                        // Check laser collisions
+                        for (let i = lasers.length - 1; i >= 0 && motherShip != null; i--) {
+                            const laser = lasers[i];
+                            const dist = Math.hypot(laser.x - motherShip.x, laser.y - motherShip.y);
+
+                            if (dist < motherShip.size / 2) {
+                                motherShip.health -= 2;  // Lasers do more damage
+                                motherShip.hitFlash = 10;
+                                lasers.splice(i, 1);
+
+                                if (motherShip.health <= 0) {
+                                    defeatMotherShip();
+                                }
+                                break;
+                            }
+                        }
+
+                        // Check spaceship collision with mothership
+                        if (!invulnerable && motherShip != null) {
+                            const dist = Math.hypot(spaceship.x - motherShip.x, spaceship.y - motherShip.y);
+                            if (dist < motherShip.size / 2 + 30) {
+                                if (!debugMode) {
+                                    spaceshipHits++;
+                                    invulnerable = true;
+                                    invulnerabilityTimer = INVULNERABILITY_DURATION;
+                                }
+
+                                playSpaceshipHitSound();
+
+                                if (spaceshipHits >= MAX_SPACESHIP_HITS) {
+                                    showContinueOrGameOver('hits');
+                                    return;
+                                }
+                            }
+                        }
+                    }
+
+                    // Reduced background enemies
+                    rocketRate *= LEVEL_10.BACKGROUND_ENEMIES;
+                    rockRate *= LEVEL_10.BACKGROUND_ENEMIES;
+
+                    // Occasional elite escort
+                    if (Math.random() < LEVEL_10.ESCORT_SPAWN_RATE && eliteUFOs.length < 2) {
+                        eliteUFOs.push(new EliteUFO());
+                    }
+                }
+
+                // ANCHOR - Update Swarm Enemies
+                for (let i = swarmEnemies.length - 1; i >= 0; i--) {
+                    const enemy = swarmEnemies[i];
+                    enemy.update();
+                    enemy.draw();
+
+                    // Collision with spaceship
+                    if (!invulnerable) {
+                        const distance = Math.hypot(enemy.x - spaceship.x, enemy.y - spaceship.y);
+                        if (distance < enemy.size + 15) {
+                            if (shieldActive) {
+                                shieldHits--;
+                                if (shieldHits <= 0) shieldActive = false;
+                                swarmEnemies.splice(i, 1);
+                                for (let j = 0; j < 8; j++) {
+                                    fireworks.push(new Particle(enemy.x, enemy.y));
+                                }
+                                continue;
+                            }
+
+                            if (!debugMode) {
+                                spaceshipHits++;
+                                invulnerable = true;
+                                invulnerabilityTimer = GAME_LIMITS.INVULN_FRAMES;
+                            }
+
+                            playSpaceshipHitSound();
+                            for (let j = 0; j < 10; j++) {
+                                fireworks.push(new Particle(spaceship.x, spaceship.y));
+                            }
+
+                            swarmEnemies.splice(i, 1);
+
+                            if (spaceshipHits >= GAME_LIMITS.MAX_HITS) {
+                                levelScore = score;
+                                totalScore += levelScore;
+                                showContinueOrGameOver('hits');
+                                return;
+                            }
+                            continue;
+                        }
+                    }
+
+                    // Remove if off screen
+                    if (enemy.x < -50 || enemy.x > canvas.width + 50 || enemy.y > canvas.height + 50) {
+                        swarmEnemies.splice(i, 1);
+                    }
+                }
+
+                // Check bullet collisions with swarm enemies
+                for (let i = swarmEnemies.length - 1; i >= 0; i--) {
+                    const enemy = swarmEnemies[i];
+
+                    for (let j = bullets.length - 1; j >= 0; j--) {
+                        const bullet = bullets[j];
+                        const distance = Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y);
+
+                        if (distance < enemy.size + 5) {
+                            playDroneDestroySound();
+                            for (let k = 0; k < 8; k++) {
+                                const particle = new Particle(enemy.x, enemy.y);
+                                particle.color = enemy.color;
+                                fireworks.push(particle);
+                            }
+                            swarmEnemies.splice(i, 1);
+                            bullets.splice(j, 1);
+                            score += POINTS.DRONE;
+
+                            // Swarm clear bonus
+                            if (swarmEnemies.length === 0 && !swarmActive) {
+                                score += LEVEL_7.SWARM_CLEAR_BONUS;
+                                textAnimations.show(
+                                    `🎉 SWARM CLEARED! +${LEVEL_7.SWARM_CLEAR_BONUS}! 🎉`,
+                                    canvas.width / 2,
+                                    canvas.height / 2 - 100,
+                                    90,
+                                    { fontSize: 36, startColor: 120, colorRange: 180 }
+                                );
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                // ANCHOR - Update Elite UFOs
+                for (let i = eliteUFOs.length - 1; i >= 0; i--) {
+                    const elite = eliteUFOs[i];
+                    elite.update();
+                    elite.draw();
+
+                    // Collision checks (similar to regular UFOs)
+                    if (!invulnerable) {
+                        const distance = Math.hypot(elite.x - spaceship.x, elite.y - spaceship.y);
+                        if (distance < elite.size + 20) {
+                            if (shieldActive) {
+                                shieldHits--;
+                                if (shieldHits <= 0) shieldActive = false;
+                                eliteUFOs.splice(i, 1);
+                                continue;
+                            }
+
+                            if (!debugMode) {
+                                spaceshipHits++;
+                                invulnerable = true;
+                                invulnerabilityTimer = GAME_LIMITS.INVULN_FRAMES;
+                            }
+
+                            playSpaceshipHitSound();
+                            eliteUFOs.splice(i, 1);
+
+                            if (spaceshipHits >= GAME_LIMITS.MAX_HITS) {
+                                levelScore = score;
+                                totalScore += levelScore;
+                                showContinueOrGameOver('hits');
+                                return;
+                            }
+                            continue;
+                        }
+                    }
+
+                    // Remove if off screen
+                    if (elite.y > canvas.height + 100 || elite.x < -100 || elite.x > canvas.width + 100) {
+                        eliteUFOs.splice(i, 1);
+                    }
+                }
+
+                // Bullet collisions with Elite UFOs
+                for (let i = eliteUFOs.length - 1; i >= 0; i--) {
+                    const elite = eliteUFOs[i];
+
+                    for (let j = bullets.length - 1; j >= 0; j--) {
+                        const bullet = bullets[j];
+                        const distance = Math.hypot(bullet.x - elite.x, bullet.y - elite.y);
+
+                        if (distance < elite.size + 5) {
+                            elite.health--;
+                            elite.hitFlash = 10;
+                            playRockHitSound();
+                            bullets.splice(j, 1);
+
+                            if (elite.health <= 0) {
+                                createFirework(elite.x, elite.y);
+                                playExplosionSound();
+                                eliteUFOs.splice(i, 1);
+                                score += LEVEL_7.ELITE_UFO_BONUS;
+
+                                textAnimations.show(
+                                    `⚡ ELITE DESTROYED! +${LEVEL_7.ELITE_UFO_BONUS}! ⚡`,
+                                    canvas.width / 2,
+                                    canvas.height / 2 - 120,
+                                    60,
+                                    { fontSize: 28, startColor: 30, colorRange: 60 }
+                                );
+                            }
+                            break;
+                        }
+                    }
+                }
                 // ANCHOR - Spawn rockets
                 if (currentLevel >= 1) {
                     if (Math.random() < rocketRate) {
@@ -5500,7 +7165,7 @@
 
                 // ANCHOR - Spawn lunchbox occasionally
                 if (Math.random() < 0.005) {
-                    lunchboxes.push(new Lunchbox());
+                    lunchboxes.push(new Lunchbox(lunchboxImage));
                 }
 
                 // ANCHOR - Spawn power-ups occasionally
@@ -6158,7 +7823,7 @@
                             lasers.splice(i, 1);
 
                             if (rock.health <= 0) {
-                                createFirework(rock.x, rock.y);
+                                //createFirework(rock.x, rock.y);
                                 playExplosionSound();
                                 spaceRocks.splice(j, 1);
                                 score += POINTS.ROCK;
@@ -6244,98 +7909,134 @@
                     }
                 }
 
-                // ANCHOR - Update bullets
+                // ANCHOR -  Update bullets and Optimized Bullet Collision Detection
+                // Build spatial grid once per frame (ONLY if you have many enemies)
+                const shouldUseSpatialGrid = (
+                    rockets.length
+                    + spaceRocks.length
+                    + ufos.length
+                    + swarmEnemies.length
+                    + eliteUFOs.length
+                    + lunchboxes.length
+                    + powerUps.length
+                    + wingmanBoosts.length
+                    + kamikazeDrones.length
+                ) > 30;
+
+                let enemyGrid = null;
+                if (shouldUseSpatialGrid) {
+                    // Combine all enemies into one array for spatial grid
+                    const allEnemies = [
+                        ...rockets, ...spaceRocks, ...ufos, ...swarmEnemies,
+                        ...eliteUFOs, ...lunchboxes, ...powerUps, ...wingmanBoosts, ...kamikazeDrones
+                    ];
+                    enemyGrid = getSpatialGrid(allEnemies, 100);
+                }
+
                 for (let i = bullets.length - 1; i >= 0; i--) {
                     const bullet = bullets[i];
+                    bullet.update();
+                    bullet.draw();
 
-                    // Handle different bullet types
-                    if (bullet.fromDrone || bullet.fromTurret) {
-                        // Drone bullet - use custom update/draw
-                        bullet.update();
-                        bullet.draw();
-
-                        if (bullet.y < 0 || bullet.y > canvas.height || bullet.x < 0 || bullet.x > canvas.width) {
-                            bullets.splice(i, 1);
-                            continue;
-                        }
-
-                        // Drone bullets use same collision logic below
-                    } else {
-                        // Regular bullet - existing code
-                        bullet.update();
-                        bullet.draw();
-
-                        if (bullet.y < 0) {
-                            bullets.splice(i, 1);
-                            continue;
-                        }
+                    if (bullet.y < 0) {
+                        bullets.splice(i, 1);
+                        continue;
                     }
 
+                    let bulletRemoved = false;
 
-                    // Check bullet-rocket collision
+                    // Get nearby enemies only if using spatial grid
+                    let nearbyEnemies = [];
+                    if (shouldUseSpatialGrid) {
+                        nearbyEnemies = getNearbyEntities(bullet.x, bullet.y, enemyGrid, 100, 1);
+                    }
+
+                    // === CHECK ROCKETS ===
                     for (let j = rockets.length - 1; j >= 0; j--) {
                         const rocket = rockets[j];
+
+                        // Skip if using spatial grid and enemy not nearby
+                        if (shouldUseSpatialGrid && !nearbyEnemies.includes(rocket)) continue;
+
                         if (Math.abs(bullet.x - rocket.x) < 25 && Math.abs(bullet.y - rocket.y) < 30) {
                             createFirework(rocket.x, rocket.y);
                             playExplosionSound();
                             rockets.splice(j, 1);
                             bullets.splice(i, 1);
-                            score++;
+                            score += POINTS.ROCKET;
+                            bulletRemoved = true;
                             break;
                         }
                     }
 
-                    // Check bullet-power-up collision
+                    if (bulletRemoved) continue;
+
+                    // === CHECK POWER-UPS ===
                     for (let j = powerUps.length - 1; j >= 0; j--) {
                         const powerUp = powerUps[j];
+
+                        // Skip if using spatial grid and subject not nearby
+                        if (shouldUseSpatialGrid && !nearbyEnemies.includes(powerUp)) continue;
+
                         if (Math.hypot(bullet.x - powerUp.x, bullet.y - powerUp.y) < 25) {
                             activatePowerUp(powerUp.type);
                             powerUps.splice(j, 1);
                             bullets.splice(i, 1);
-                            score += POINTS.POWER_UP_BONUS; // Bonus points for power-up
+                            score += POINTS.POWER_UP_BONUS;
+                            bulletRemoved = true;
                             break;
                         }
                     }
 
-                    // Check bullet-lunchbox collision
+                    if (bulletRemoved) continue;
+
+                    // === CHECK LUNCHBOXES ===
                     for (let j = lunchboxes.length - 1; j >= 0; j--) {
                         const lunchbox = lunchboxes[j];
+
+                        // Skip if using spatial grid and subject not nearby
+                        if (shouldUseSpatialGrid && !nearbyEnemies.includes(lunchbox)) continue;
+
                         if (Math.hypot(bullet.x - lunchbox.x, bullet.y - lunchbox.y) < 25) {
                             lunchboxHits.push(Date.now());
 
-                            // Check for double lunchbox hit
                             if (lunchboxHits.length >= 2) {
                                 laserMode = true;
-                                laserModeTimer = 600; // 10 seconds
-                                lunchboxHits = []; // Reset counter
+                                laserModeTimer = 600;
+                                lunchboxHits = [];
                             } else {
                                 activateMissileMode();
                             }
 
                             lunchboxes.splice(j, 1);
                             bullets.splice(i, 1);
-                            score += POINTS.LUNCHBOX; // Bonus points for lunchbox
+                            score += POINTS.LUNCHBOX;
+                            bulletRemoved = true;
                             break;
                         }
                     }
 
-                    // Check bullet-wingman boost collision
+                    if (bulletRemoved) continue;
+
+                    // === CHECK WINGMAN BOOSTS ===
                     for (let j = wingmanBoosts.length - 1; j >= 0; j--) {
                         const boost = wingmanBoosts[j];
+
+                        // Skip if using spatial grid and subject not nearby
+                        if (shouldUseSpatialGrid && !nearbyEnemies.includes(boost)) continue;
 
                         if (!boost.collected && Math.hypot(bullet.x - boost.x, bullet.y - boost.y) < 30) {
                             boost.applyKnockback(bullet.x, bullet.y);
                             playDingSound();
                             bullets.splice(i, 1);
+                            bulletRemoved = true;
 
-                            // Check if enough hits to collect
                             if (boost.hitCount >= boost.maxHits) {
                                 boost.collected = true;
                                 activateWingmanBoost();
                                 wingmanBoosts.splice(j, 1);
                                 score += POINTS.WINGMAN_BOOST;
 
-                                // Create collection particles
                                 for (let k = 0; k < 15; k++) {
                                     fireworks.push(new Particle(boost.x, boost.y));
                                 }
@@ -6344,101 +8045,204 @@
                         }
                     }
 
-                    // Check bullet-space rock collision
+                    if (bulletRemoved) continue;
+
+                    // === CHECK SPACE ROCKS ===
                     for (let j = spaceRocks.length - 1; j >= 0; j--) {
                         const rock = spaceRocks[j];
+
+                        // Skip if using spatial grid and enemy not nearby
+                        if (shouldUseSpatialGrid && !nearbyEnemies.includes(rock)) continue;
+
                         const distance = Math.hypot(bullet.x - rock.x, bullet.y - rock.y);
                         if (distance < rock.size / 2 + 5) {
                             rock.health--;
                             rock.hitFlash = 10;
                             playRockHitSound();
                             bullets.splice(i, 1);
+                            bulletRemoved = true;
 
                             if (rock.health <= 0) {
-                                // Rock destroyed
-                                createFirework(rock.x, rock.y);
                                 playExplosionSound();
                                 spaceRocks.splice(j, 1);
-                                score += POINTS.ROCK; // Bonus points for destroying a rock
+                                score += POINTS.ROCK;
                             }
                             break;
                         }
                     }
 
+                    if (bulletRemoved) continue;
 
-                    // Check bullet-UFO collision
+                    // === CHECK UFOS ===
                     for (let j = ufos.length - 1; j >= 0; j--) {
                         const ufo = ufos[j];
+
+                        // Skip if using spatial grid and enemy not nearby
+                        if (shouldUseSpatialGrid && !nearbyEnemies.includes(ufo)) continue;
+
                         const distance = Math.hypot(bullet.x - ufo.x, bullet.y - ufo.y);
                         if (distance < ufo.size + 5) {
                             ufo.health--;
                             ufo.hitFlash = 10;
                             playRockHitSound();
                             bullets.splice(i, 1);
+                            bulletRemoved = true;
 
                             if (ufo.health <= 0) {
                                 createFirework(ufo.x, ufo.y);
                                 playExplosionSound();
                                 ufos.splice(j, 1);
-                                score += POINTS.UFO; // Good bonus for destroying UFO
+                                score += POINTS.UFO;
                             }
                             break;
                         }
                     }
 
-                    // Check bullet-drone collision (Level 5+)
-                    for (let j = kamikazeDrones.length - 1; j >= 0; j--) {
-                        const drone = kamikazeDrones[j];
-                        const distance = Math.hypot(bullet.x - drone.x, bullet.y - drone.y);
-                        if (distance < drone.size + 5) {
-                            // Drone destroyed
-                            playDroneDestroySound();
+                    if (bulletRemoved) continue;
 
-                            // Small explosion
-                            for (let k = 0; k < 10; k++) {
-                                fireworks.push(new Particle(drone.x, drone.y));
+                    // === CHECK KAMIKAZE DRONES (Level 5+) ===
+                    if (currentLevel >= 5) {
+                        for (let j = kamikazeDrones.length - 1; j >= 0; j--) {
+                            const drone = kamikazeDrones[j];
+
+                            // Skip if using spatial grid and subject not nearby
+                            if (shouldUseSpatialGrid && !nearbyEnemies.includes(drone)) continue;
+
+                            const distance = Math.hypot(bullet.x - drone.x, bullet.y - drone.y);
+
+                            if (distance < drone.size + 5) {
+                                playDroneDestroySound();
+
+                                for (let k = 0; k < 10; k++) {
+                                    fireworks.push(new Particle(drone.x, drone.y));
+                                }
+
+                                kamikazeDrones.splice(j, 1);
+                                bullets.splice(i, 1);
+                                score += POINTS.DRONE;
+                                bulletRemoved = true;
+                                break;
                             }
-
-                            kamikazeDrones.splice(j, 1);
-                            bullets.splice(i, 1);
-                            score += POINTS.DRONE; // Good points for drones
-                            break;
                         }
                     }
 
-                    // Check bullet-heavy cruiser collision (Level 6+)
-                    for (let j = heavyCruisers.length - 1; j >= 0; j--) {
-                        const cruiser = heavyCruisers[j];
-                        const distance = Math.hypot(bullet.x - cruiser.x, bullet.y - cruiser.y);
-                        if (distance < cruiser.size / 2 + 5) {
-                            cruiser.health--;
-                            cruiser.hitFlash = 10;
+                    if (bulletRemoved) continue;
 
-                            // Play metallic hit sound
-                            if (audioContext && soundEnabled) {
-                                const oscillator = audioContext.createOscillator();
-                                const gainNode = audioContext.createGain();
-                                oscillator.connect(gainNode);
-                                gainNode.connect(audioContext.destination);
+                    // === CHECK HEAVY CRUISERS (Level 6+) ===
+                    if (currentLevel >= 6) {
+                        for (let j = heavyCruisers.length - 1; j >= 0; j--) {
+                            const cruiser = heavyCruisers[j];
+                            const distance = Math.hypot(bullet.x - cruiser.x, bullet.y - cruiser.y);
 
-                                oscillator.type = 'square';
-                                oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
-                                oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.1);
+                            if (distance < cruiser.size / 2 + 5) {
+                                cruiser.health--;
+                                cruiser.hitFlash = 10;
 
-                                gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
-                                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                                // Metallic hit sound
+                                if (audioContext && soundEnabled) {
+                                    const oscillator = audioContext.createOscillator();
+                                    const gainNode = audioContext.createGain();
+                                    oscillator.connect(gainNode);
+                                    gainNode.connect(audioContext.destination);
 
-                                oscillator.start(audioContext.currentTime);
-                                oscillator.stop(audioContext.currentTime + 0.1);
+                                    oscillator.type = 'square';
+                                    oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+                                    oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.1);
+
+                                    gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+                                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+                                    oscillator.start(audioContext.currentTime);
+                                    oscillator.stop(audioContext.currentTime + 0.1);
+                                }
+
+                                bullets.splice(i, 1);
+                                bulletRemoved = true;
+
+                                if (cruiser.health <= 0) {
+                                    destroyHeavyCruiser(cruiser);
+                                    heavyCruisers.splice(j, 1);
+                                }
+                                break;
                             }
+                        }
+                    }
 
-                            bullets.splice(i, 1);
+                    if (bulletRemoved) continue;
 
-                            if (cruiser.health <= 0) {
-                                destroyHeavyCruiser(cruiser);
-                                heavyCruisers.splice(j, 1);
+                    // === CHECK SWARM ENEMIES (Level 7+) ===
+                    if (currentLevel >= 7) {
+                        for (let j = swarmEnemies.length - 1; j >= 0; j--) {
+                            const enemy = swarmEnemies[j];
+
+                            // Skip if using spatial grid and enemy not nearby
+                            if (shouldUseSpatialGrid && !nearbyEnemies.includes(enemy)) continue;
+
+                            const distance = Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y);
+                            if (distance < enemy.size + 5) {
+                                playDroneDestroySound();
+
+                                for (let k = 0; k < 8; k++) {
+                                    const particle = new Particle(enemy.x, enemy.y);
+                                    particle.color = enemy.color;
+                                    fireworks.push(particle);
+                                }
+
+                                swarmEnemies.splice(j, 1);
+                                bullets.splice(i, 1);
+                                score += POINTS.DRONE;
+                                bulletRemoved = true;
+
+                                // Swarm clear bonus
+                                if (swarmEnemies.length === 0 && !swarmActive) {
+                                    score += LEVEL_7.SWARM_CLEAR_BONUS;
+                                    textAnimations.show(
+                                        `🎉 SWARM CLEARED! +${LEVEL_7.SWARM_CLEAR_BONUS}! 🎉`,
+                                        canvas.width / 2,
+                                        canvas.height / 2 - 100,
+                                        90,
+                                        { fontSize: 36, startColor: 120, colorRange: 180 }
+                                    );
+                                }
+                                break;
                             }
-                            break;
+                        }
+                    }
+
+                    if (bulletRemoved) continue;
+
+                    // === CHECK ELITE UFOS (Level 7+) ===
+                    if (currentLevel >= 7) {
+                        for (let j = eliteUFOs.length - 1; j >= 0; j--) {
+                            const elite = eliteUFOs[j];
+
+                            // Skip if using spatial grid and enemy not nearby
+                            if (shouldUseSpatialGrid && !nearbyEnemies.includes(elite)) continue;
+
+                            const distance = Math.hypot(bullet.x - elite.x, bullet.y - elite.y);
+                            if (distance < elite.size + 5) {
+                                elite.health--;
+                                elite.hitFlash = 10;
+                                playRockHitSound();
+                                bullets.splice(i, 1);
+                                bulletRemoved = true;
+
+                                if (elite.health <= 0) {
+                                    createFirework(elite.x, elite.y);
+                                    playExplosionSound();
+                                    eliteUFOs.splice(j, 1);
+                                    score += LEVEL_7.ELITE_UFO_BONUS;
+
+                                    textAnimations.show(
+                                        `⚡ ELITE DESTROYED! +${LEVEL_7.ELITE_UFO_BONUS}! ⚡`,
+                                        canvas.width / 2,
+                                        canvas.height / 2 - 120,
+                                        60,
+                                        { fontSize: 28, startColor: 30, colorRange: 60 }
+                                    );
+                                }
+                                break;
+                            }
                         }
                     }
                 }
@@ -6478,7 +8282,6 @@
                             spreadBullets.splice(i, 1);
 
                             if (rock.health <= 0) {
-                                createFirework(rock.x, rock.y);
                                 playExplosionSound();
                                 spaceRocks.splice(j, 1);
                                 score += POINTS.ROCK;
@@ -6793,7 +8596,6 @@
                         const distance = Math.hypot(rock.x - turret.x, rock.y - turret.y);
                         if (distance < rock.size / 2 + HIT_RADIUS.ROCK) {
                             // Turret destroyed
-                            createFirework(turret.x, turret.y);
                             playWingmanDestroyedSound();
                             stationaryTurrets.splice(t, 1);
                             break;
@@ -7069,15 +8871,7 @@
             // !SECTION: Update Main Spaceship
 
             // ANCHOR - Update fireworks
-            for (let i = fireworks.length - 1; i >= 0; i--) {
-                const particle = fireworks[i];
-                particle.update();
-                particle.draw();
-
-                if (particle.life <= 0) {
-                    fireworks.splice(i, 1);
-                }
-            }
+            particlePool.update();
 
             // SECTION - Draw Gameboard UI
             // Draw timer
@@ -7113,7 +8907,12 @@
             let yPosProtectiveShieldStatus = yPosHeavyCruiserDestroyed + yPosOffset;
             let yPosProtectiveEmpStatus = yPosProtectiveShieldStatus + yPosOffset;
             let yPosProtectiveDecoyStatus = yPosProtectiveEmpStatus + yPosOffset;
-            let yPosContinues = yPosProtectiveDecoyStatus + yPosOffset;
+            let yPosSwarmStatus = yPosProtectiveDecoyStatus + yPosOffset;
+            let yPosMeteorShowerStatus = yPosSwarmStatus + yPosOffset;
+            let yPosEliteUFOCount = yPosMeteorShowerStatus + yPosOffset;
+            let yPosWaveIndicator = yPosEliteUFOCount + yPosOffset;
+            let yPosTimeRemainingIndicator = yPosWaveIndicator + yPosOffset;
+            let yPosContinues = yPosTimeRemainingIndicator + yPosOffset;
 
             ctx.font = '24px Arial';
             ctx.fillStyle = 'white';
@@ -7158,13 +8957,30 @@
             // Display homing wingman cooldown
             ctx.font = '20px Arial';
             ctx.textAlign = 'left';
-            if (homingWingmanCooldown > 0) {
+
+            if (homingWingmanUsesRemaining <= 0) {
+                // No uses left
+                ctx.fillStyle = '#666666';
+                ctx.fillText(`Homing Wingman (SPACE): Depleted`, xPosUI, yPosHomingWingman);
+            } else if (homingWingmanCooldown > 0) {
+                // On cooldown
                 ctx.fillStyle = 'gray';
-                ctx.fillText(`Homing Wingman (SPACE): ${Math.ceil(homingWingmanCooldown / 60)}s`, xPosUI, yPosHomingWingman);
+                ctx.fillText(
+                    `Homing Wingman (SPACE): ${Math.ceil(homingWingmanCooldown / 60)}s (${homingWingmanUsesRemaining} left)`,
+                    xPosUI,
+                    yPosHomingWingman
+                );
             } else {
+                // Ready to use
                 ctx.fillStyle = '#00ffcc';
-                ctx.fillText(`Homing Wingman (SPACE): READY`, xPosUI, yPosHomingWingman);
+                ctx.fillText(
+                    `Homing Wingman (SPACE): READY (${homingWingmanUsesRemaining}/${homingWingmanMaxUses})`,
+                    xPosUI,
+                    yPosHomingWingman
+                );
             }
+
+
             // Weapon status
             let weaponText = 'Single Gun';
             if (weaponLevel === 2) weaponText = 'Dual Guns';
@@ -7196,6 +9012,21 @@
                 ctx.fillStyle = '#ffff00';
                 ctx.fillText('Invincible | 10s Timer', canvas.width - 10, 105);
                 ctx.fillText('Press L: Jump to Level', canvas.width - 10, 130);
+
+                // Performance Monitor 
+                const totalEnemies = rockets.length + spaceRocks.length + ufos.length +
+                    swarmEnemies.length + eliteUFOs.length + kamikazeDrones.length +
+                    heavyCruisers.length;
+                const totalProjectiles = bullets.length + lasers.length + missiles.length +
+                    enemyBullets.length + cruiserBullets.length;
+
+                ctx.font = '16px Arial';
+                ctx.fillStyle = totalEnemies > ENTITY_LIMITS.MAX_TOTAL_ENEMIES * 0.8 ? '#ff0000' : '#00ff00';
+                ctx.textAlign = 'right';
+                ctx.fillText(`Enemies: ${totalEnemies}/${ENTITY_LIMITS.MAX_TOTAL_ENEMIES}`, canvas.width - 10, 180);
+                ctx.fillText(`Projectiles: ${totalProjectiles}`, canvas.width - 10, 200);
+                ctx.fillText(`FPS: ~${Math.round(1000 / 16)}`, canvas.width - 10, 220);
+
             }
 
             // Asteroid Belt status indicator (Level 4+)
@@ -7221,7 +9052,6 @@
             ctx.textAlign = 'left';
             ctx.fillStyle = '#00ffff';
             ctx.fillText(`Turrets (V): ${stationaryTurrets.length}/${maxStationaryTurrets}`, xPosUI, yPosTurrets);
-
 
             // Heavy Cruiser status (Level 6+)
             if (currentLevel >= 6) {
@@ -7340,6 +9170,75 @@
                 }
             }
 
+            // ANCHOR - Level 7 Status Display
+            if (currentLevel >= 7) {
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'left';
+
+                const totalEnemies = rockets.length + spaceRocks.length + ufos.length +
+                    swarmEnemies.length + eliteUFOs.length;
+
+                if (totalEnemies > ENTITY_LIMITS.MAX_TOTAL_ENEMIES * 0.9) {
+                    // Red overlay
+                    ctx.fillStyle = 'rgba(255, 0, 0, 0.05)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    // Warning text
+                    if (Math.floor(Date.now() / 500) % 2 === 0) {
+                        ctx.font = 'bold 24px Arial';
+                        ctx.fillStyle = '#ff0000';
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 2;
+                        ctx.textAlign = 'center';
+                        ctx.strokeText('⚠️ SPACE CROWDED! ⚠️', canvas.width / 2, 50);
+                        ctx.fillText('⚠️ SPACE CROWDED! ⚠️', canvas.width / 2, 50);
+                    }
+                }
+
+                // Swarm status
+                if (swarmActive) {
+                    const flashColor = Math.floor(Date.now() / 200) % 2 === 0 ? '#ff0000' : '#ffaa00';
+                    ctx.fillStyle = flashColor;
+                    ctx.fillText(`🚨 SWARM ACTIVE! (${swarmEnemies.length} enemies)`, xPosUI, yPosSwarmStatus);
+                } else if (swarmCount < LEVEL_7.MAX_SWARMS) {
+                    const nextWaveTime = Math.ceil((LEVEL_7.SWARM_INTERVAL - swarmTimer) / 60);
+                    ctx.fillStyle = '#ffaa00';
+                    ctx.fillText(`Next Swarm: ${nextWaveTime}s (Wave ${swarmCount + 1}/${LEVEL_7.MAX_SWARMS})`, xPosUI, yPosSwarmStatus);
+                } else {
+                    ctx.fillStyle = '#00ff00';
+                    ctx.fillText(`All Swarms Cleared! (${swarmEnemies.length} stragglers)`, xPosUI, yPosSwarmStatus);
+                }
+
+                // Meteor shower status
+                if (meteorShowerActive) {
+                    const flashColor = Math.floor(Date.now() / 250) % 2 === 0 ? '#ff6600' : '#ffaa00';
+                    ctx.fillStyle = flashColor;
+                    ctx.fillText(`☄️ METEOR SHOWER: ${Math.ceil(meteorShowerTimer / 60)}s`, xPosUI, yPosMeteorShowerStatus);
+                }
+
+                // Elite UFO count
+                if (eliteUFOs.length > 0) {
+                    ctx.fillStyle = '#ff3300';
+                    ctx.fillText(`⚡ Elite UFOs: ${eliteUFOs.length}`, xPosUI, yPosEliteUFOCount);
+                }
+            }
+
+            // Add to UI section (Level 9+ display):
+            if (currentLevel >= 9) {
+                ctx.font = '22px Arial';
+                ctx.textAlign = 'left';
+
+                // Wave indicator
+                const flashColor = Math.floor(Date.now() / 300) % 2 === 0 ? '#ff0000' : '#ffaa00';
+                ctx.fillStyle = flashColor;
+                ctx.fillText(`🌪️ WAVE ${level9WaveCount}/${LEVEL_9.MAX_WAVES} | INTENSITY: ${level9IntensityLevel}x`, xPosUI, yPosWaveIndicator);
+
+                // Time remaining indicator (different color for Level 9)
+                if (gameTimer <= 30) {
+                    ctx.fillStyle = gameTimer <= 10 ? '#ff0000' : '#ffaa00';
+                    ctx.fillText(`⏰ SURVIVE: ${gameTimer}s / ${LEVEL_9.DURATION}s`, xPosUI, yPosTimeRemainingIndicator);
+                }
+            }
             // ANCHOR - Game over screen
             if (gameState === 'gameover') {
                 ctx.font = 'bold 72px Arial';
@@ -7472,14 +9371,17 @@
             }
         }
 
+        function init(){
+            initAudio();
+        }
         // !SECTION: Misc.
 
         /**************************************************
          * !SECTION - Functions
         ***************************************************/
 
-        //gameLoop();
-
+        init();
+        
     </script>
 </body>
 
