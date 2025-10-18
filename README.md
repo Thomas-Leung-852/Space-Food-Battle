@@ -29,10 +29,13 @@ Design: Human (10%), Claude Desktop (90%)
 Coding: Human (5%), Claude Desktop (95%)   
 Code Review:  Human (30%), Claude Desktop (70%)   
 Testing:  Human (95%), Claude Desktop (5% provided test tips and key scopes)   
-<br>    
 
 Failed and rolled back   
 version 28 & 29 - Control the selection of background music. This frequently causes the MP3 files to be downloaded from the host server. (Excepted cached)
+
+![](https://static.wixstatic.com/media/0d7edc_114ffc2e1c68433fa0a8f9c8d8c291ab~mv2.png)      
+
+![](https://static.wixstatic.com/media/0d7edc_445c0426332446dfa4a520762c96e2ab~mv2.png)
 
 **4. Addressing Implementation Issues in AI-Developed Game**   
 
@@ -49,7 +52,7 @@ The critical failure is the recommendation to restructure the source code to imp
 </a>   
 <br>&nbsp;
 
-***5. credits section***    
+***6. credits section***    
 
 Online image and background music
 

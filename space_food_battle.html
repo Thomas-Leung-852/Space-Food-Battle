@@ -210,8 +210,7 @@
     <div id="info">
         Click to shoot! Hit rockets for fireworks! Hit lunchbox for missiles! Press P to pause<br>
         Press B to activate Super Weapon! (2 uses remaining) | Press C to change formation (4 modes)<br>
-        Press V to deploy Turret (max 2)! Press SPACE for Homing Wingman <span style="color: #ffaa00;">(Level 6+: 2
-            uses!)</span><br>
+        Press V to deploy Turret (max 2)! Press SPACE for Homing Wingman | Press H to switch Wingman Type<br>
         <span style="color: #00ffff;">Level 5+: Press E for EMP Blast! Press Q to Deploy Decoy!</span><br>
         Level 6+: Destroy Heavy Cruisers for big points! Avoid rocket collisions! (5 hits = Game Over)<br>
         Controls: A = Rotate Left, D = Rotate Right, S = Reset Rotation, Mouse Wheel = Rotate
@@ -3210,6 +3209,289 @@
             }
         }
 
+        // ANCHOR - Laser Lock Homing Wingman class
+        class LaserLockWingman {
+            constructor(startX, startY) {
+                this.x = startX;
+                this.y = startY;
+                this.target = null;
+                this.lifetime = 15 * FPS; // 15 seconds
+                this.maxLifetime = 15 * FPS;
+                this.active = true;
+                this.lightningPoints = [];
+                this.updateInterval = 5;
+                this.frameCount = 0;
+                this.damageRadius = 15;
+                this.searchRadius = 500;
+            }
+
+            findNearestEnemy() {
+                let nearest = null;
+                let minDist = this.searchRadius;
+
+                const allEnemies = [
+                    ...rockets.map(e => ({ obj: e, type: 'rocket' })),
+                    ...spaceRocks.map(e => ({ obj: e, type: 'rock' })),
+                    ...ufos.map(e => ({ obj: e, type: 'ufo' })),
+                    ...kamikazeDrones.map(e => ({ obj: e, type: 'drone' })),
+                    ...heavyCruisers.map(e => ({ obj: e, type: 'cruiser' })),
+                    ...eliteUFOs.map(e => ({ obj: e, type: 'elite' })),
+                    ...swarmEnemies.map(e => ({ obj: e, type: 'swarm' }))
+                ];
+
+                allEnemies.forEach(enemy => {
+                    const dist = Math.hypot(enemy.obj.x - this.x, enemy.obj.y - this.y);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearest = enemy;
+                    }
+                });
+
+                return nearest;
+            }
+
+            generateLightningPath(targetX, targetY) {
+                this.lightningPoints = [];
+
+                const numSegments = 8 + Math.floor(Math.random() * 5);
+                const dx = targetX - this.x;
+                const dy = targetY - this.y;
+
+                this.lightningPoints.push({ x: this.x, y: this.y });
+
+                for (let i = 1; i < numSegments; i++) {
+                    const t = i / numSegments;
+                    const baseX = this.x + dx * t;
+                    const baseY = this.y + dy * t;
+
+                    const perpX = -dy;
+                    const perpY = dx;
+                    const perpLen = Math.hypot(perpX, perpY);
+
+                    if (perpLen > 0) {
+                        const offsetAmount = (Math.random() - 0.5) * 50 * (1 - t);
+                        const offsetX = (perpX / perpLen) * offsetAmount;
+                        const offsetY = (perpY / perpLen) * offsetAmount;
+
+                        this.lightningPoints.push({
+                            x: baseX + offsetX,
+                            y: baseY + offsetY
+                        });
+                    } else {
+                        this.lightningPoints.push({ x: baseX, y: baseY });
+                    }
+                }
+
+                this.lightningPoints.push({ x: targetX, y: targetY });
+            }
+
+            checkLightningCollisions() {
+                const allEnemies = [
+                    ...rockets.map((e, i) => ({ obj: e, type: 'rocket', index: i })),
+                    ...spaceRocks.map((e, i) => ({ obj: e, type: 'rock', index: i })),
+                    ...ufos.map((e, i) => ({ obj: e, type: 'ufo', index: i })),
+                    ...kamikazeDrones.map((e, i) => ({ obj: e, type: 'drone', index: i })),
+                    ...eliteUFOs.map((e, i) => ({ obj: e, type: 'elite', index: i })),
+                    ...swarmEnemies.map((e, i) => ({ obj: e, type: 'swarm', index: i }))
+                ];
+
+                for (let i = 0; i < this.lightningPoints.length - 1; i++) {
+                    const p1 = this.lightningPoints[i];
+                    const p2 = this.lightningPoints[i + 1];
+
+                    allEnemies.forEach(enemy => {
+                        if (enemy.obj === this.target?.obj) return;
+
+                        const dist = this.pointToLineDistance(
+                            enemy.obj.x, enemy.obj.y,
+                            p1.x, p1.y, p2.x, p2.y
+                        );
+
+                        if (dist < this.damageRadius) {
+                            this.destroyEnemy(enemy);
+                        }
+                    });
+                }
+            }
+
+            pointToLineDistance(px, py, x1, y1, x2, y2) {
+                const A = px - x1;
+                const B = py - y1;
+                const C = x2 - x1;
+                const D = y2 - y1;
+
+                const dot = A * C + B * D;
+                const lenSq = C * C + D * D;
+                let param = -1;
+
+                if (lenSq !== 0) param = dot / lenSq;
+
+                let xx, yy;
+
+                if (param < 0) {
+                    xx = x1;
+                    yy = y1;
+                } else if (param > 1) {
+                    xx = x2;
+                    yy = y2;
+                } else {
+                    xx = x1 + param * C;
+                    yy = y1 + param * D;
+                }
+
+                const dx = px - xx;
+                const dy = py - yy;
+                return Math.hypot(dx, dy);
+            }
+
+            destroyEnemy(enemy) {
+                playExplosionSound();
+
+                for (let j = 0; j < 10; j++) {
+                    const particle = new Particle(enemy.obj.x, enemy.obj.y);
+                    particle.color = '#00ff00';
+                    fireworks.push(particle);
+                }
+
+                switch (enemy.type) {
+                    case 'rocket':
+                        rockets.splice(enemy.index, 1);
+                        score += POINTS.ROCKET;
+                        break;
+                    case 'rock':
+                        enemy.obj.health--;
+                        if (enemy.obj.health <= 0) {
+                            spaceRocks.splice(enemy.index, 1);
+                            score += POINTS.ROCK;
+                        }
+                        break;
+                    case 'ufo':
+                        enemy.obj.health--;
+                        if (enemy.obj.health <= 0) {
+                            ufos.splice(enemy.index, 1);
+                            score += POINTS.UFO;
+                        }
+                        break;
+                    case 'drone':
+                        kamikazeDrones.splice(enemy.index, 1);
+                        score += POINTS.DRONE;
+                        break;
+                    case 'elite':
+                        enemy.obj.health--;
+                        if (enemy.obj.health <= 0) {
+                            eliteUFOs.splice(enemy.index, 1);
+                            score += LEVEL_7.ELITE_UFO_BONUS;
+                        }
+                        break;
+                    case 'swarm':
+                        swarmEnemies.splice(enemy.index, 1);
+                        score += POINTS.DRONE;
+                        break;
+                }
+            }
+
+            update() {
+                this.lifetime--;
+                this.frameCount++;
+
+                if (!this.target || this.targetIsDestroyed()) {
+                    const nearestEnemy = this.findNearestEnemy();
+                    if (nearestEnemy) {
+                        this.target = nearestEnemy;
+                    }
+                }
+
+                if (this.target && this.frameCount % this.updateInterval === 0) {
+                    this.generateLightningPath(this.target.obj.x, this.target.obj.y);
+                    this.checkLightningCollisions();
+                }
+
+                this.x += (spaceship.x - this.x) * 0.1;
+                this.y += (spaceship.y - this.y) * 0.1;
+
+                return this.lifetime > 0;
+            }
+
+            targetIsDestroyed() {
+                if (!this.target) return true;
+
+                const arrays = {
+                    'rocket': rockets,
+                    'rock': spaceRocks,
+                    'ufo': ufos,
+                    'drone': kamikazeDrones,
+                    'cruiser': heavyCruisers,
+                    'elite': eliteUFOs,
+                    'swarm': swarmEnemies
+                };
+
+                const arr = arrays[this.target.type];
+                return arr ? !arr.includes(this.target.obj) : true;
+            }
+
+            draw() {
+                if (this.lightningPoints.length < 2) return;
+
+                const timeLeft = this.lifetime / this.maxLifetime;
+                const alpha = timeLeft < 0.3 ? timeLeft / 0.3 : 1;
+
+                ctx.save();
+                ctx.globalAlpha = alpha;
+
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 4;
+                ctx.shadowColor = '#00ff00';
+                ctx.shadowBlur = 20;
+                ctx.beginPath();
+                ctx.moveTo(this.lightningPoints[0].x, this.lightningPoints[0].y);
+                for (let i = 1; i < this.lightningPoints.length; i++) {
+                    ctx.lineTo(this.lightningPoints[i].x, this.lightningPoints[i].y);
+                }
+                ctx.stroke();
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.moveTo(this.lightningPoints[0].x, this.lightningPoints[0].y);
+                for (let i = 1; i < this.lightningPoints.length; i++) {
+                    ctx.lineTo(this.lightningPoints[i].x, this.lightningPoints[i].y);
+                }
+                ctx.stroke();
+
+                ctx.restore();
+                ctx.shadowBlur = 0;
+
+                ctx.font = 'bold 16px Arial';
+                ctx.fillStyle = timeLeft < 0.3 ? '#ff0000' : '#00ff00';
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 3;
+                ctx.textAlign = 'center';
+                const secondsLeft = Math.ceil(this.lifetime / 60);
+                ctx.strokeText(`⚡${secondsLeft}s`, this.x, this.y - 30);
+                ctx.fillText(`⚡${secondsLeft}s`, this.x, this.y - 30);
+
+                if (this.target && !this.targetIsDestroyed()) {
+                    ctx.strokeStyle = '#00ff00';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(this.target.obj.x, this.target.obj.y, 30, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.moveTo(this.target.obj.x - 40, this.target.obj.y);
+                    ctx.lineTo(this.target.obj.x - 30, this.target.obj.y);
+                    ctx.moveTo(this.target.obj.x + 30, this.target.obj.y);
+                    ctx.lineTo(this.target.obj.x + 40, this.target.obj.y);
+                    ctx.moveTo(this.target.obj.x, this.target.obj.y - 40);
+                    ctx.lineTo(this.target.obj.x, this.target.obj.y - 30);
+                    ctx.moveTo(this.target.obj.x, this.target.obj.y + 30);
+                    ctx.lineTo(this.target.obj.x, this.target.obj.y + 40);
+                    ctx.stroke();
+                }
+            }
+        }
+
         // ANCHOR - Protective Power-Up Class (Level 5+)
         class ProtectivePowerUp {
             constructor(type) {
@@ -3753,6 +4035,7 @@
         let homingWingmanCooldownTime = 120; // 60 = 1s
         let homingWingmanMaxUses = GAME_LIMITS.HOMING_WINGMAN_MAX_USES_LVL_1;
         let homingWingmanUsesRemaining = GAME_LIMITS.HOMING_WINGMAN_USES_REMAINING_LVL_1;
+        let homingWingmanType = 1; // 1 = Standard, 2 = Laser Lock
 
         // Level 4: Asteroid Belt system
         let asteroidBeltActive = false;
@@ -4101,9 +4384,8 @@
             }
 
             if (e.code === 'Space' && gameState === 'playing') {
-                e.preventDefault(); // Prevent page scroll
+                e.preventDefault();
 
-                // Check if any uses remaining
                 if (homingWingmanUsesRemaining <= 0) {
                     textAnimations.show(
                         'No Homing Wingmen Available!',
@@ -4116,29 +4398,36 @@
                 }
 
                 if (homingWingmanCooldown <= 0) {
-                    // Launch homing wingman from spaceship position
-                    homingWingmen.push(new HomingWingman(spaceship.x, spaceship.y));
+                    if (homingWingmanType === 1) {
+                        homingWingmen.push(new HomingWingman(spaceship.x, spaceship.y));
+                        textAnimations.show(
+                            `🚀 HOMING WINGMAN DEPLOYED! (${homingWingmanUsesRemaining - 1} left)`,
+                            canvas.width / 2,
+                            canvas.height / 2 - 150,
+                            60,
+                            { fontSize: 28, startColor: 180, colorRange: 120 }
+                        );
+                    } else {
+                        homingWingmen.push(new LaserLockWingman(spaceship.x, spaceship.y));
+                        textAnimations.show(
+                            `⚡ LASER LOCK DEPLOYED! (${homingWingmanUsesRemaining - 1} left)`,
+                            canvas.width / 2,
+                            canvas.height / 2 - 150,
+                            60,
+                            { fontSize: 28, startColor: 120, colorRange: 120 }
+                        );
+                    }
+
                     homingWingmanCooldown = homingWingmanCooldownTime;
                     homingWingmanUsesRemaining--;
 
                     initAudio();
                     playPowerUpSound();
 
-                    // Visual effect
                     for (let i = 0; i < 20; i++) {
                         fireworks.push(new Particle(spaceship.x, spaceship.y));
                     }
-
-                    // Show uses remaining
-                    textAnimations.show(
-                        `🚀 HOMING WINGMAN DEPLOYED! (${homingWingmanUsesRemaining} left)`,
-                        canvas.width / 2,
-                        canvas.height / 2 - 150,
-                        60,
-                        { fontSize: 28, startColor: 180, colorRange: 120 }
-                    );
                 } else {
-                    // Cooldown message
                     textAnimations.show(
                         `Cooldown: ${Math.ceil(homingWingmanCooldown / 60)}s`,
                         canvas.width / 2,
@@ -4244,6 +4533,26 @@
                 }
                 if (e.key === 'q' || e.key === 'Q') {
                     deployDecoy();
+                }
+            }
+
+            // Press H to change homing wingman type
+            if (e.key === 'h' || e.key === 'H') {
+                if (gameState === 'playing') {
+                    homingWingmanType = homingWingmanType === 1 ? 2 : 1;
+
+                    const typeName = homingWingmanType === 1 ? 'STANDARD HOMING' : 'LASER LOCK';
+                    const typeColor = homingWingmanType === 1 ? 180 : 120;
+
+                    playFormationChangeSound();
+
+                    textAnimations.show(
+                        `Homing Wingman: ${typeName}`,
+                        canvas.width / 2,
+                        canvas.height / 2,
+                        90,
+                        { fontSize: 32, startColor: typeColor, colorRange: 60 }
+                    );
                 }
             }
         });
@@ -4356,7 +4665,7 @@
 
         // ANCHOR Play Shoot sound
         function playShootSound() {
-             soundPlayer.play({
+            soundPlayer.play({
                 type: 'square',
                 freq: 800,
                 freqEnds: [200],
@@ -4367,7 +4676,7 @@
 
         // ANCHOR - Play Explosion Sound
         function playExplosionSound() {
-             soundPlayer.play({
+            soundPlayer.play({
                 type: 'sawtooth',
                 freq: 150,
                 freqEnds: [50],
@@ -4389,7 +4698,7 @@
 
         // ANCHOR - Play Lunch box sound
         function playLunchboxSound() {
-             soundPlayer.play({
+            soundPlayer.play({
                 type: 'sine',
                 freq: 1000,
                 freqEnds: [1500, 800],
@@ -4400,7 +4709,7 @@
 
         // ANCHOR - Play Power up sound
         function playPowerUpSound() {
-             soundPlayer.play({
+            soundPlayer.play({
                 type: 'sine',
                 freq: 400,
                 freqEnds: [800, 1200],
@@ -4493,7 +4802,7 @@
 
         // ANCHOR - Play Space Rock hit sound
         function playRockHitSound() {
-             soundPlayer.play({
+            soundPlayer.play({
                 type: 'sawtooth',
                 freq: 100,
                 freqEnds: [80],
@@ -4504,25 +4813,25 @@
 
         // ANCHOR - Play Formation change sound
         function playFormationChangeSound() {
-             soundPlayer.play({
+            soundPlayer.play({
                 type: 'sine',
                 freq: 600,
                 freqEnds: [800, 600],
                 duration: 0.15,
                 volume: 0.2
-            });            
-            
+            });
+
         }
 
         // ANCHOR - Play Wingman Destroyed Sound
         function playWingmanDestroyedSound() {
-             soundPlayer.play({
+            soundPlayer.play({
                 type: 'sawtooth',
                 freq: 400,
                 freqEnds: [100],
                 duration: 0.5,
                 volume: 0.25
-            }); 
+            });
 
         }
 
@@ -4567,7 +4876,7 @@
                 freqEnds: [100],
                 duration: 0.15,
                 volume: 0.15
-            }); 
+            });
 
         }
         // !SECTION - Sound Effects
@@ -8955,29 +9264,33 @@
             }
 
             // Display homing wingman cooldown
+            // Display homing wingman cooldown
             ctx.font = '20px Arial';
             ctx.textAlign = 'left';
 
+            const wingmanTypeName = homingWingmanType === 1 ? 'Standard' : 'Laser Lock';
+            const wingmanTypeColor = homingWingmanType === 1 ? '#00ffcc' : '#00ff00';
+
             if (homingWingmanUsesRemaining <= 0) {
-                // No uses left
                 ctx.fillStyle = '#666666';
-                ctx.fillText(`Homing Wingman (SPACE): Depleted`, xPosUI, yPosHomingWingman);
+                ctx.fillText(`Homing Wingman (SPACE): Depleted | Type (H): ${wingmanTypeName}`, xPosUI, yPosHomingWingman);
             } else if (homingWingmanCooldown > 0) {
-                // On cooldown
                 ctx.fillStyle = 'gray';
                 ctx.fillText(
                     `Homing Wingman (SPACE): ${Math.ceil(homingWingmanCooldown / 60)}s (${homingWingmanUsesRemaining} left)`,
                     xPosUI,
                     yPosHomingWingman
                 );
+                ctx.fillStyle = wingmanTypeColor;
+                //ctx.fillText(`Type (H): ${wingmanTypeName}`, xPosUI, yPosHomingWingman);
             } else {
-                // Ready to use
-                ctx.fillStyle = '#00ffcc';
+                ctx.fillStyle = wingmanTypeColor;
                 ctx.fillText(
                     `Homing Wingman (SPACE): READY (${homingWingmanUsesRemaining}/${homingWingmanMaxUses})`,
                     xPosUI,
                     yPosHomingWingman
                 );
+                //ctx.fillText(`Type (H): ${wingmanTypeName}`, xPosUI, yPosHomingWingman);
             }
 
 
@@ -9371,7 +9684,7 @@
             }
         }
 
-        function init(){
+        function init() {
             initAudio();
         }
         // !SECTION: Misc.
@@ -9381,7 +9694,7 @@
         ***************************************************/
 
         init();
-        
+
     </script>
 </body>
 
