@@ -52,7 +52,26 @@ The critical failure is the recommendation to restructure the source code to imp
 </a>   
 <br>&nbsp;
 
-***6. credits section***    
+***6. Prompts***
+
+We captured the Claude Desktop prompts from Day 1 to Day 18, showcasing how AI developed a shooting game from scratch. Based on my prompts, it provided code blocks and offered advice, identified design problems, supplied free images and background music, and addressed implementation issues. This viewer represents a no-code implementation, which is truly amazing. The prompts and viewer are located in the 'prompts' folder.
+<br><br>
+       
+![](https://static.wixstatic.com/media/0d7edc_9e44230c55134f79b1634c8922079630~mv2.png)
+
+
+**How to use the Viewer:**   
+
+1. Launch the ```image_viewer.html``` file in your browser.   
+2. Click on "Select Folder."   
+3. Click "Upload."   
+4. A confirmation dialog will appear; press "Upload" to proceed.   
+<br>
+
+![](https://static.wixstatic.com/media/0d7edc_ef085da1e8b141e380fede75b6b1bdfb~mv2.png)
+
+
+***7. credits section***    
 
 Online image and background music
 

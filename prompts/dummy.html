@@ -1,0 +1,71 @@
+<html>
+
+<body>
+
+    <div>
+        <canvas id="myCanvas2" width="600" height="1600"></canvas>
+    </div>
+    <script>
+
+        function light(x, y, targetX, targetY) {
+
+            const canvas2 = document.getElementById('myCanvas2');
+            const ctx2 = canvas2.getContext('2d');
+
+            ctx2.clearRect(0, 0, canvas2.width, canvas2.height);
+            ctx2.beginPath();
+            ctx2.moveTo(x, y); // Starting point of the "line"
+
+
+            x1 = Math.floor(Math.random() * 600) + 1;
+            x2 = Math.floor(Math.random() * 600) + 1;
+            x3 = Math.floor(Math.random() * 600) + 1;
+
+            y1 = Math.floor(Math.random() * 600) + 1;
+            y2 = Math.floor(Math.random() * 600) + 1;
+            y3 = Math.floor(Math.random() * 600) + 1;
+
+            // Replace lineTo with bezierCurveTo to create a more complex curve
+            // (cp1x, cp1y) and (cp2x, cp2y) are control points, (x, y) is the end point
+            ctx2.bezierCurveTo(x1, y1, x2, y2, targetX, targetY);
+
+            ctx2.stroke();
+        }
+
+        objPosY = 500;
+        objPosX = 100;
+        lstMouseX = 0;
+        lstMouseY = 0;
+
+        document.addEventListener('mousemove', function (event) {
+            const mouseX = event.clientX; // X-coordinate relative to the viewport
+            const mouseY = event.clientY; // Y-coordinate relative to the viewport
+
+            console.log(`Mouse X: ${mouseX}, Mouse Y: ${mouseY}`);
+
+            x = Math.floor(Math.random() * 600) + 1;
+            y = Math.floor(Math.random() * 600) + 1;
+
+            light(mouseX, mouseY, objPosX, objPosY--);
+
+            lstMouseX = mouseX;
+            lstMouseY = mouseY;
+
+            if (objPosY <= 0) { objPosY = 500; }
+
+        });
+
+        setInterval(myTimer, 500);
+
+        function myTimer() {
+            x = Math.floor(Math.random() * 600) + 1;
+            y = Math.floor(Math.random() * 600) + 1;
+
+            light(lstMouseX, lstMouseY, x, y);
+        }
+
+    </script>
+
+</body>
+
+</html>

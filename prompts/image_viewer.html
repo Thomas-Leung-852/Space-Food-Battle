@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        /* Floating menu at top */
+        #menu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        button {
+            padding: 8px 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        #info {
+            margin-left: auto;
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        #titleDisplay {
+            position: fixed;
+            top: 70px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 20px;
+            z-index: 999;
+        }
+
+        #titleDisplay h2 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+            color: #4CAF50;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        #folderHelp {
+            font-size: 12px;
+            color: #FFD700;
+            margin-left: 10px;
+            font-weight: bold;
+        }
+
+        #notes {
+            position: fixed;
+            top: 130px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 15px;
+            border-radius: 8px;
+            color: #fff;
+            width: calc(25% - 40px);
+            max-height: 50vh;
+            overflow-y: auto;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            word-wrap: break-word;
+        }
+
+        #notesToggle {
+            position: fixed;
+            top: 70px;
+            left: 20px;
+            background: transparent;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 24px;
+            cursor: pointer;
+            display: none;
+            z-index: 1001;
+            transition: background 0.3s;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #notesToggle:hover {
+            background: rgba(76, 175, 80, 0.3);
+        }
+
+        #notesToggle.active {
+            background: rgba(244, 67, 54, 0.3);
+        }
+
+        #notesToggle.active:hover {
+            background: rgba(244, 67, 54, 0.5);
+        }
+
+        #notes h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #4CAF50;
+        }
+
+        #notes ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        #notes li {
+            margin: 5px 0;
+        }
+
+        #notes a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+
+        #notes a:hover {
+            text-decoration: underline;
+        }
+
+        /* Image container */
+        #container {
+            margin-top: 130px;
+            height: calc(100vh - 130px);
+            overflow: auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px;
+        }
+
+        #imageWrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        #displayImage {
+            display: block;
+            height: auto;
+            transition: width 0.3s ease;
+        }
+
+        #fileInput {
+            padding: 6px;
+        }
+
+        #pageSelector {
+            max-width: 300px;
+            padding: 6px 10px;
+            font-size: 14px;
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #pageSelector option {
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Floating menu -->
+    <div id="menu">
+        <input type="file" id="fileInput" webkitdirectory directory multiple style="display:none;" />
+        <button id="selectFolder">📁 Select Folder</button>
+        <span id="folderHelp">⚠️ Note: No files are uploaded! All processing is done locally on your computer.</span>
+        <select id="pageSelector" style="display:none;">
+            <option value="">Select a page...</option>
+        </select>
+        <button id="firstImg" title="First Image">⏮ First</button>
+        <button id="prevImg" title="Previous Image">◀ Prev</button>
+        <button id="nextImg" title="Next Image">Next ▶</button>
+        <button id="lastImg" title="Last Image">Last ⏭</button>
+        <button id="prevPage" title="Page Up">▲ Prev Page</button>
+        <button id="nextPage" title="Page Down">Next Page ▼</button>
+        <button id="home" title="Home">⌂ Home</button>
+        <button id="end" title="End">⌄ End</button>
+        <button id="zoomOut" title="Zoom Out">🔍−</button>
+        <button id="zoomIn" title="Zoom In">🔍+</button>
+        <button id="resetZoom" title="Reset Zoom">100%</button>
+        <div id="info">No images loaded</div>
+    </div>
+
+    <!-- Title display -->
+    <div id="titleDisplay" style="display:none;">
+        <h2 id="titleText"></h2>
+    </div>
+
+    <!-- Notes toggle button -->
+    <button id="notesToggle">📝</button>
+
+    <!-- Notes panel -->
+    <div id="notes"></div>
+
+    <!-- Image display area -->
+    <div id="container">
+        <div id="imageWrapper">
+            <img id="displayImage" alt="Image will appear here">
+        </div>
+    </div>
+
+    <script>
+        // State management
+        let images = [];           // Array of image data objects from JSON
+        let imageFiles = {};       // Map of image filenames to File objects
+        let currentImageIndex = 0; // Current image being viewed
+        let currentPage = 0;       // Current page within the image
+        let totalPages = 0;        // Total pages for current image
+        let displayHeight = 0;     // Height of display area
+        let zoomLevel = 100;       // Current zoom level (percentage)
+
+        // DOM elements
+        const fileInput = document.getElementById('fileInput');
+        const selectFolderBtn = document.getElementById('selectFolder');
+        const pageSelector = document.getElementById('pageSelector');
+        const displayImage = document.getElementById('displayImage');
+        const imageWrapper = document.getElementById('imageWrapper');
+        const container = document.getElementById('container');
+        const info = document.getElementById('info');
+        const notesPanel = document.getElementById('notes');
+        const notesToggle = document.getElementById('notesToggle');
+        const titleDisplay = document.getElementById('titleDisplay');
+        const titleText = document.getElementById('titleText');
+        const firstImgBtn = document.getElementById('firstImg');
+        const prevImgBtn = document.getElementById('prevImg');
+        const nextImgBtn = document.getElementById('nextImg');
+        const lastImgBtn = document.getElementById('lastImg');
+        const prevPageBtn = document.getElementById('prevPage');
+        const nextPageBtn = document.getElementById('nextPage');
+        const homeBtn = document.getElementById('home');
+        const endBtn = document.getElementById('end');
+        const zoomInBtn = document.getElementById('zoomIn');
+        const zoomOutBtn = document.getElementById('zoomOut');
+        const resetZoomBtn = document.getElementById('resetZoom');
+
+        // Toggle notes panel
+        notesToggle.addEventListener('click', () => {
+            if (notesPanel.style.display === 'none' || notesPanel.style.display === '') {
+                notesPanel.style.display = 'block';
+                notesToggle.classList.add('active');
+            } else {
+                notesPanel.style.display = 'none';
+                notesToggle.classList.remove('active');
+            }
+        });
+
+        // Page selector change handler
+        pageSelector.addEventListener('change', (e) => {
+            const selectedIndex = parseInt(e.target.value);
+            if (!isNaN(selectedIndex) && selectedIndex >= 0 && selectedIndex < images.length) {
+                loadImage(selectedIndex);
+            }
+        });
+
+        // Trigger folder selection when button is clicked
+        selectFolderBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Load folder and automatically find Data.json
+        fileInput.addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files);
+            
+            if (files.length === 0) {
+                alert('No files found in the selected folder.');
+                return;
+            }
+
+            await processFolder(files);
+        });
+
+        // Process folder to load JSON and images
+        async function processFolder(files) {
+            console.log('Processing folder with', files.length, 'files');
+
+            try {
+                // Find Data.json in the folder
+                const jsonFile = files.find(f => f.name === 'Data.json');
+                if (!jsonFile) {
+                    alert('Data.json not found in the selected folder.');
+                    return;
+                }
+
+                console.log('Found Data.json');
+
+                // Parse JSON file
+                const text = await jsonFile.text();
+                const newImages = JSON.parse(text);
+                
+                if (!Array.isArray(newImages) || newImages.length === 0) {
+                    alert('Invalid JSON format. Expected an array of image objects.');
+                    return;
+                }
+
+                console.log('Loaded JSON with', newImages.length, 'entries');
+                console.log('Required images:', newImages.map(img => img.image));
+
+                // Create a map of all files in the folder for quick lookup
+                const fileMap = {};
+                files.forEach(file => {
+                    fileMap[file.name] = file;
+                });
+
+                // Load only the images mentioned in the JSON
+                const newImageFiles = {};
+                let loadedCount = 0;
+                
+                for (const imageData of newImages) {
+                    const imageName = imageData.image;
+                    if (fileMap[imageName]) {
+                        newImageFiles[imageName] = fileMap[imageName];
+                        loadedCount++;
+                        console.log('Loaded:', imageName);
+                    } else {
+                        console.warn('Image not found:', imageName);
+                    }
+                }
+
+                console.log(`Successfully loaded ${loadedCount} out of ${newImages.length} images`);
+
+                if (loadedCount > 0) {
+                    // Update global state
+                    images = newImages;
+                    imageFiles = newImageFiles;
+                    
+                    // Populate page selector dropdown
+                    populatePageSelector();
+                    
+                    // Stay on current image if possible, otherwise go to first
+                    if (currentImageIndex >= images.length) {
+                        currentImageIndex = 0;
+                    }
+                    
+                    loadImage(currentImageIndex);
+                } else {
+                    alert('No images from Data.json were found in the selected folder.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Populate page selector dropdown with titles
+        function populatePageSelector() {
+            pageSelector.innerHTML = '<option value="">Select a page...</option>';
+            
+            images.forEach((imageData, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                const displayText = imageData.title && imageData.title.trim() !== '' 
+                    ? `${index + 1}. ${imageData.title}` 
+                    : `${index + 1}. Image ${index + 1}`;
+                option.textContent = displayText;
+                pageSelector.appendChild(option);
+            });
+            
+            pageSelector.style.display = 'inline-block';
+        }
+
+        // Load and display image
+        async function loadImage(index) {
+            if (index < 0 || index >= images.length) return;
+            
+            const imageData = images[index];
+            const imageFile = imageFiles[imageData.image];
+            
+            console.log('Loading image:', imageData.image); // Debug output
+            
+            if (!imageFile) {
+                alert(`Image file not found: ${imageData.image}`);
+                console.error('Image not found in imageFiles:', imageData.image);
+                return;
+            }
+            
+            currentImageIndex = index;
+            currentPage = 0;
+            zoomLevel = 100; // Reset zoom when loading new image
+            
+            try {
+                // Read the image file and create object URL
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    displayImage.onload = () => {
+                        applyZoom();
+                        calculatePages();
+                        updateDisplay();
+                        displayNotes(imageData);
+                    };
+                    displayImage.src = e.target.result;
+                };
+                reader.readAsDataURL(imageFile);
+                
+            } catch (error) {
+                console.error('Image load error for path:', imageData.image, error);
+                alert(`Error loading image: ${imageData.image}\n${error.message}`);
+            }
+        }
+
+        // Display notes and video link
+        function displayNotes(imageData) {
+            const hasNotes = imageData.note && imageData.note.length > 0;
+            const hasVideos = imageData.video && imageData.video.length > 0;
+            const hasScreenshots = imageData.screenshot && imageData.screenshot.length > 0;
+
+            if (!hasNotes && !hasVideos && !hasScreenshots) {
+                notesToggle.style.display = 'none';
+                notesPanel.style.display = 'none';
+                return;
+            }
+
+            let html = '';
+            
+            // Display notes
+            if (hasNotes) {
+                html += '<h3>Notes:</h3><ul>';
+                imageData.note.forEach(note => {
+                    html += `<li>${note}</li>`;
+                });
+                html += '</ul>';
+            }
+            
+            // Display videos
+            if (hasVideos) {
+                html += '<h3>Videos:</h3><p>';
+                imageData.video.forEach((videoUrl, index) => {
+                    if (index > 0) html += ' | ';
+                    html += `<a href="${videoUrl}" target="_blank">file ${index + 1}</a>`;
+                });
+                html += '</p>';
+            }
+
+            // Display screenshots
+            if (hasScreenshots) {
+                html += '<h3>Screenshots:</h3><p>';
+                imageData.screenshot.forEach((screenshotUrl, index) => {
+                    if (index > 0) html += ' | ';
+                    html += `<a href="${screenshotUrl}" target="_blank">file ${index + 1}</a>`;
+                });
+                html += '</p>';
+            }
+            
+            notesPanel.innerHTML = html;
+            notesToggle.style.display = 'block';
+            // Keep current visibility state when changing images
+        }
+
+        // Calculate number of pages based on image and window height
+        function calculatePages() {
+            displayHeight = container.clientHeight;
+            const imageHeight = displayImage.offsetHeight; // Use actual displayed height
+            
+            // Calculate how many pages needed to view entire image
+            totalPages = Math.ceil(imageHeight / displayHeight);
+            
+            // Reset to first page if current page is now out of bounds
+            if (currentPage >= totalPages) {
+                currentPage = totalPages - 1;
+            }
+            if (currentPage < 0) {
+                currentPage = 0;
+            }
+        }
+
+        // Update the display position and info
+        function updateDisplay() {
+            const imageData = images[currentImageIndex];
+            
+            // Update info text (without filename)
+            info.textContent = `Image ${currentImageIndex + 1}/${images.length} | Page ${currentPage + 1}/${totalPages} | Zoom: ${zoomLevel}%`;
+            
+            // Update page selector
+            pageSelector.value = currentImageIndex;
+            
+            // Update title display
+            if (imageData.title && imageData.title.trim() !== '') {
+                titleText.textContent = imageData.title;
+                titleDisplay.style.display = 'block';
+            } else {
+                titleDisplay.style.display = 'none';
+            }
+            
+            // Update button states
+            firstImgBtn.disabled = currentImageIndex === 0;
+            prevImgBtn.disabled = currentImageIndex === 0;
+            nextImgBtn.disabled = currentImageIndex === images.length - 1;
+            lastImgBtn.disabled = currentImageIndex === images.length - 1;
+            prevPageBtn.disabled = currentPage === 0;
+            nextPageBtn.disabled = currentPage === totalPages - 1;
+            homeBtn.disabled = currentPage === 0;
+            endBtn.disabled = currentPage === totalPages - 1;
+        }
+
+        // Navigation functions
+        function firstImage() {
+            if (images.length > 0) {
+                loadImage(0);
+            }
+        }
+
+        function previousImage() {
+            if (currentImageIndex > 0) {
+                loadImage(currentImageIndex - 1);
+            }
+        }
+
+        function nextImage() {
+            if (currentImageIndex < images.length - 1) {
+                loadImage(currentImageIndex + 1);
+            }
+        }
+
+        function lastImage() {
+            if (images.length > 0) {
+                loadImage(images.length - 1);
+            }
+        }
+
+        function previousPage() {
+            if (currentPage > 0) {
+                currentPage--;
+                scrollToCurrentPage();
+            }
+        }
+
+        function nextPage() {
+            if (currentPage < totalPages - 1) {
+                currentPage++;
+                scrollToCurrentPage();
+            }
+        }
+
+        function goToHome() {
+            currentPage = 0;
+            scrollToCurrentPage();
+        }
+
+        function goToEnd() {
+            currentPage = totalPages - 1;
+            scrollToCurrentPage();
+        }
+
+        // Smooth scroll to current page
+        function scrollToCurrentPage() {
+            const scrollOffset = currentPage * displayHeight;
+            container.scrollTo({
+                top: scrollOffset,
+                behavior: 'smooth'
+            });
+            updateDisplay();
+        }
+
+        // Zoom functions
+        function applyZoom() {
+            displayImage.style.width = `${zoomLevel}%`;
+        }
+
+        function zoomIn() {
+            if (zoomLevel < 500) { // Max 500% zoom
+                zoomLevel += 10;
+                applyZoom();
+                calculatePages();
+                updateDisplay();
+            }
+        }
+
+        function zoomOut() {
+            if (zoomLevel > 10) { // Min 10% zoom
+                zoomLevel -= 10;
+                applyZoom();
+                calculatePages();
+                updateDisplay();
+            }
+        }
+
+        function resetZoom() {
+            zoomLevel = 100;
+            applyZoom();
+            calculatePages();
+            updateDisplay();
+        }
+
+        // Button event listeners
+        firstImgBtn.addEventListener('click', firstImage);
+        prevImgBtn.addEventListener('click', previousImage);
+        nextImgBtn.addEventListener('click', nextImage);
+        lastImgBtn.addEventListener('click', lastImage);
+        prevPageBtn.addEventListener('click', previousPage);
+        nextPageBtn.addEventListener('click', nextPage);
+        homeBtn.addEventListener('click', goToHome);
+        endBtn.addEventListener('click', goToEnd);
+        zoomInBtn.addEventListener('click', zoomIn);
+        zoomOutBtn.addEventListener('click', zoomOut);
+        resetZoomBtn.addEventListener('click', resetZoom);
+
+        // Keyboard event listeners
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'PageUp':
+                    e.preventDefault();
+                    previousPage();
+                    break;
+                case 'PageDown':
+                    e.preventDefault();
+                    nextPage();
+                    break;
+                case 'Home':
+                    e.preventDefault();
+                    goToHome();
+                    break;
+                case 'End':
+                    e.preventDefault();
+                    goToEnd();
+                    break;
+                case 'ArrowLeft':
+                    previousImage();
+                    break;
+                case 'ArrowRight':
+                    nextImage();
+                    break;
+            }
+        });
+
+        // Recalculate pages on window resize
+        window.addEventListener('resize', () => {
+            if (images.length > 0) {
+                calculatePages();
+                // Adjust current page if it's now out of bounds
+                if (currentPage >= totalPages) {
+                    currentPage = totalPages - 1;
+                }
+                updateDisplay();
+            }
+        });
+    </script>
+</body>
+</html>

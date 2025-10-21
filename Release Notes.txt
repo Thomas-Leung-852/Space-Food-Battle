@@ -1,4 +1,15 @@
 ==========================================================================================================================================================================================
+Release Version: v251022-06-A
+Date: 20251022
+Time: 0030
+File Version: N/A
+
+Changes
+1. Added 'prompts' folder
+
+It contains the Claude Desktop prompts and "image_viewer.html" to navigate the images, external video URLs, external supporting images and implementation notes.
+
+==========================================================================================================================================================================================
 Release Version: v251018-05-A
 Date: 20251018
 Time: 1500

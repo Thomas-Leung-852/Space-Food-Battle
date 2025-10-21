@@ -1,0 +1,178 @@
+[
+    {
+        "title": "Day 01 - prototype 01",
+        "image": "01 Simple rocket shooting game (Masked) - Claude.png",
+        "note": [
+            "The purpose of creating the prototype is to develop a simple concept demo. At the bottom of the screen, rockets move upward, while players control the mouse. Bullets are fired to shoot down the rockets."
+        ],
+        "video": [
+            "https://youtu.be/HftIFJWUR8Y"
+        ],
+        "screenshot": [
+            "https://static.wixstatic.com/media/0d7edc_d7a0946deab0401981c4ab2a7b5030b9~mv2.png"
+        ]
+    },
+    {
+        "title": "Day 02 - Prototype 02",
+        "image": "02 Lunch box shooting game (Masked) - Claude.png",
+        "note": [
+            "The space lunchbox moves from the top of the screen to the bottom. Players control the mouse to shoot down the lunchboxes. After consecutively hitting two lunchboxes, missiles randomly fire at the rockets to take them down. This version features a prototype of the spaceship, represented by a green triangle to symbolize the player's ship."
+        ],
+        "video": [
+            "https://youtu.be/JXB2l6StUxU"
+        ],
+        "screenshot": []
+    },
+    {
+        "title": "Day 03 - Build foundation scene (Can't see the background image?)",
+        "image": "03 Game background image fix (Masked) - Claude.png",
+        "note": [
+            "Artifact not work",
+            "Standalone Web browser is okay.",
+            "When adding a new background image, I found that the artifact in Claude Desktop could not display it. The error messages provided some help for debugging, but after several attempts, the background image still failed to show correctly. Eventually, I accidentally downloaded the file and opened it in Google Chrome, only to discover that the background image displayed normally."
+        ],
+        "video": [],
+        "screenshot": []
+    },
+    {
+        "title": "Day 04 - Collaborate with AI and embark on a journey",
+        "image": "04 AI team collaboration strategies - Claude.png",
+        "note": [],
+        "video": [],
+        "screenshot": []
+    },
+    {
+        "title": "Day 05 - Build Super Weapon",
+        "image": "05 Special weapon rocket clearing mechanic - Claude.png",
+        "note": [
+            "During the game testing, I noticed that when there were too many rockets on the screen, not all of them could be cleared. Eventually, I decided to create a special weapon, similar to an aurora cannon effect, to eliminate all the rockets on the screen. Throughout this process, the AI presented its ideas in a storyboard format, making our communication feel truly interactive.",
+            "During the process, I requested the AI to create a conceptual prototype for me to understand the entire operation and its effects.",
+            "The Code architecture analysis helps us better understand the current structure of the source code, making the process of code integration smoother for me in the future."
+        ],
+        "video": [
+            "https://youtu.be/kVosG53eTyE", 
+            "https://youtu.be/lGfZSLLVUB0"
+        ],
+        "screenshot": []
+    },
+    {
+        "title": "Day 06 - Build Spaceship",
+        "image": "06 Spaceship game hit limit - Claude.png",
+        "note": [
+            "The design and development of the player's spaceship appearance and operation methods."
+        ],
+        "video": [
+            "https://youtu.be/xFxbfnrPxd4"
+        ],
+        "screenshot": [
+            "https://static.wixstatic.com/media/0d7edc_11f431eb1ad943108c107bf0a72d2f68~mv2.png"
+        ]
+    },
+    {
+        "title": "Day 07 - Build Wingmen",
+        "image": "07 Spaceship game with wingmen (Masked) - Claude.png",
+        "note": [],
+        "video": [
+            "https://youtu.be/7hDe4rVAdSY",
+            "https://youtu.be/aVy5DMO3Nec"
+        ],
+        "screenshot": []
+    },
+    {
+        "title": "Day 08 - Sound effect and Background music control",
+        "image": "08 Space rock game mechanics - Claude.png",
+        "note": [],
+        "video": [],
+        "screenshot": []
+    },
+    {
+        "title": "Day 09 - Implement Pages flow",
+        "image": "09 Game source code enhancement - Claude.png",
+        "note": [],
+        "video": [
+            "https://youtu.be/fZ1Iq5I5nhM"
+        ],
+        "screenshot": []
+    },
+    {
+        "title": "Day 10 - Greeting Message and landing page",
+        "image": "10 Generating happy greeting hashtags (Masked)  - Claude.png",
+        "note": [],
+        "video": [],
+        "screenshot": []
+    },
+    {
+        "title": "Day 11 - Add Debug Mode",
+        "image": "11 Wingman rocket firing code - Claude.png",
+        "note": [
+            "Toggle Debug mode: Press 'Ctrl' + 'Shift' + 'd'",
+            "Select Game level to debug: In debug mode, press 'l' and then fill in the level number and then press 'Enter' key."
+        ],
+        "video": [
+            "https://youtu.be/xXSXDVCQ2JI"
+        ],
+        "screenshot": []
+    },
+    {
+        "title": "Day 12 - New Game Level implementation (4,5,6)  ",
+        "image": "12 Game level design strategy (Masked) - Claude.png",
+        "note": [],
+        "video": [],
+        "screenshot": [
+            "https://static.wixstatic.com/media/0d7edc_fcfe953c8a334eed8546c8296df5d244~mv2.png"
+        ]
+    },
+    {
+        "title": "Day 13 - Code Review",
+        "image": "13 Code review and integration - Claude.png",
+        "note": [],
+        "video": [],
+        "screenshot": []
+    },
+    {
+        "title": "Day 14 - New Game Level (8, 9 and 10) implementation",
+        "image": "14 Level 8 development strategy - Claude.png",
+        "note": [],
+        "video": [],
+        "screenshot": [
+            "https://static.wixstatic.com/media/0d7edc_114ffc2e1c68433fa0a8f9c8d8c291ab~mv2.png",
+            "https://static.wixstatic.com/media/0d7edc_445c0426332446dfa4a520762c96e2ab~mv2.png"
+        ]
+    },
+    {
+        "title": "Day 15 - Revise Game Rules",
+        "image": "15 Game victory conditions - Claude.png",
+        "note": [
+            "Added VS Code Extension - Comment Anchor. It helps for code tracing and integration."
+        ],
+        "video": [],
+        "screenshot": []
+    },
+    {
+        "title": "Day 16 - Optimization Analysis (Rejected)",
+        "image": "16 File optimization analysis - Claude.png",
+        "note": [],
+        "video": [],
+        "screenshot": []
+    },
+    {
+        "title": "Day 17 - Integrity Verification",
+        "image": "17 Integrity check - Claude.png",
+        "note": [],
+        "video": [
+            "https://youtu.be/tcN8tySNyjQ?si=07OtMC3RGdQltlr7"
+        ],
+        "screenshot": []
+    },
+    {
+        "title": "Day 18 - New Homing Wingman Weapon type",
+        "image": "18 New Weapon (Anchor - Leaser Lock) - Claude.png",
+        "note": [],
+        "video": [
+            "https://youtu.be/dSdavuqvcIc"
+        ],
+        "screenshot": [
+            "https://camo.githubusercontent.com/35d3ba21c25ce85c9ce32cb8d46434a86767da6b470207876243886ff828060d/68747470733a2f2f7374617469632e7769787374617469632e636f6d2f6d656469612f3064376564635f31313466666332653163363834333366613061386639633864386332393161627e6d76322e706e67"
+        ]
+    }
+]
