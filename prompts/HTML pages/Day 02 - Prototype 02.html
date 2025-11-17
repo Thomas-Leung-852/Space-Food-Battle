@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Space Rocket Shooter</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            background: #000 url('https://cdn.stocksnap.io/img-thumbs/960w/moon-craters_OHYSVCPGJK.jpg') center/cover no-repeat fixed; 
+            overflow: hidden; 
+            font-family: Arial; 
+        }
+        canvas { 
+            display: block; 
+            background: transparent; 
+        }
+        #info { position: absolute; top: 10px; left: 10px; color: white; z-index: 10; }
+    </style>
+</head>
+<body>
+    <div id="info">Click to shoot! Hit rockets for fireworks! Hit lunchbox for missiles! Press P to pause</div>
+    <button id="pauseBtn" style="position: absolute; top: 10px; right: 10px; padding: 10px 20px; font-size: 16px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;">PAUSE</button>
+    <canvas id="game"></canvas>
+    
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+
+        let rockets = [];
+        let bullets = [];
+        let fireworks = [];
+        let lunchboxes = [];
+        let missiles = [];
+        let score = 0;
+        let missedRockets = 0;
+        let gameState = 'playing';
+        let gameOverTime = 0;
+        let gameTimer = 60;
+        let gameStartTime = Date.now();
+        let pausedTime = 0;
+        let missileMode = false;
+        let missileModeTimer = 0;
+        
+        // Spaceship variables
+        let spaceship = {
+            x: canvas.width / 2,
+            y: canvas.height - 100,
+            targetX: canvas.width / 2,
+            targetY: canvas.height - 100,
+            size: 30,
+            thrustParticles: []
+        };
+        
+        let audioContext;
+        
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        
+        function playShootSound() {
+            if (!audioContext) return;
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            oscillator.type = 'square';
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.1);
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+        
+        function playExplosionSound() {
+            if (!audioContext) return;
+            const oscillator1 = audioContext.createOscillator();
+            const gainNode1 = audioContext.createGain();
+            oscillator1.connect(gainNode1);
+            gainNode1.connect(audioContext.destination);
+            oscillator1.type = 'sawtooth';
+            oscillator1.frequency.setValueAtTime(150, audioContext.currentTime);
+            oscillator1.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.3);
+            gainNode1.gain.setValueAtTime(0.2, audioContext.currentTime);
+            gainNode1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            oscillator1.start(audioContext.currentTime);
+            oscillator1.stop(audioContext.currentTime + 0.3);
+        }
+        
+        function playMissileSound() {
+            if (!audioContext) return;
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            oscillator.type = 'triangle';
+            oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.2);
+            gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.2);
+        }
+        
+        function playLunchboxSound() {
+            if (!audioContext) return;
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(1000, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(1500, audioContext.currentTime + 0.15);
+            oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.3);
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.3);
+        }
+        
+        const rocketImage = new Image();
+        rocketImage.src = "data:image/svg+xml;base64," + btoa(`<svg width="32" height="80" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="rocketGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style="stop-color:#ff6b6b"/>
+                    <stop offset="50%" style="stop-color:#4ecdc4"/>
+                    <stop offset="100%" style="stop-color:#45b7d1"/>
+                </linearGradient>
+                <linearGradient id="flameGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style="stop-color:#ff9500"/>
+                    <stop offset="50%" style="stop-color:#ff6b00"/>
+                    <stop offset="100%" style="stop-color:#ff0000"/>
+                </linearGradient>
+            </defs>
+            <rect x="8" y="16" width="16" height="40" fill="url(#rocketGrad)" rx="4"/>
+            <polygon points="16,0 8,16 24,16" fill="#ffd93d"/>
+            <polygon points="4,44 8,36 8,56" fill="#666"/>
+            <polygon points="28,44 24,36 24,56" fill="#666"/>
+            <polygon points="12,56 16,80 20,56" fill="url(#flameGrad)"/>
+            <circle cx="16" cy="30" r="4" fill="#87ceeb"/>
+            <rect x="10" y="20" width="12" height="2" fill="#fff" opacity="0.7"/>
+            <rect x="10" y="40" width="12" height="2" fill="#fff" opacity="0.7"/>
+        </svg>`);
+        
+        class Rocket {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = canvas.height;
+                this.vy = -2 - Math.random() * 3;
+                this.size = 16;
+                this.color = `hsl(${Math.random() * 360}, 70%, 50%)`;
+            }
+            
+            update() {
+                this.y += this.vy;
+            }
+            
+            draw() {
+                if (rocketImage.complete) {
+                    ctx.drawImage(rocketImage, this.x - 16, this.y - 40, 32, 80);
+                } else {
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(this.x - this.size/2, this.y - this.size, this.size, this.size * 2);
+                    ctx.fillStyle = 'orange';
+                    ctx.fillRect(this.x - 6, this.y + this.size, 12, 20);
+                }
+            }
+        }
+        
+        class Lunchbox {
+            constructor() {
+                this.x = Math.random() * (canvas.width - 60) + 30;
+                this.y = -30;
+                this.vy = 1.5 + Math.random() * 2;
+                this.size = 30;
+                this.rotation = 0;
+                this.rotationSpeed = 0.02 + Math.random() * 0.04;
+                this.pulse = 0;
+            }
+            
+            update() {
+                this.y += this.vy;
+                this.rotation += this.rotationSpeed;
+                this.pulse += 0.1;
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                
+                // Glowing effect
+                const glowIntensity = Math.sin(this.pulse) * 0.3 + 0.7;
+                ctx.shadowColor = '#00ff88';
+                ctx.shadowBlur = 20 * glowIntensity;
+                
+                // Main lunchbox body
+                ctx.fillStyle = '#ff6b6b';
+                ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
+                
+                // Handle
+                ctx.fillStyle = '#333';
+                ctx.fillRect(-this.size/6, -this.size/2 - 5, this.size/3, 8);
+                
+                // Logo/symbol
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('🍱', 0, 5);
+                
+                ctx.restore();
+                ctx.shadowBlur = 0;
+            }
+        }
+        
+        class Bullet {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vy = -8;
+                this.size = 3;
+            }
+            
+            update() {
+                this.y += this.vy;
+            }
+            
+            draw() {
+                ctx.fillStyle = 'yellow';
+                ctx.fillRect(this.x - this.size/2, this.y - this.size/2, this.size, this.size);
+            }
+        }
+        
+        class Missile {
+            constructor(targetX, targetY) {
+                this.x = Math.random() * canvas.width;
+                this.y = canvas.height + 20;
+                this.targetX = targetX;
+                this.targetY = targetY;
+                this.speed = 4;
+                this.angle = Math.atan2(targetY - this.y, targetX - this.x);
+                this.vx = Math.cos(this.angle) * this.speed;
+                this.vy = Math.sin(this.angle) * this.speed;
+                this.trail = [];
+                this.life = 300;
+            }
+            
+            update() {
+                // Add current position to trail
+                this.trail.push({x: this.x, y: this.y});
+                if (this.trail.length > 10) {
+                    this.trail.shift();
+                }
+                
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life--;
+                
+                // Slight homing behavior
+                if (this.life > 200) {
+                    const nearestRocket = this.findNearestRocket();
+                    if (nearestRocket) {
+                        const newAngle = Math.atan2(nearestRocket.y - this.y, nearestRocket.x - this.x);
+                        this.angle = this.angle * 0.95 + newAngle * 0.05;
+                        this.vx = Math.cos(this.angle) * this.speed;
+                        this.vy = Math.sin(this.angle) * this.speed;
+                    }
+                }
+            }
+            
+            findNearestRocket() {
+                let nearest = null;
+                let minDist = Infinity;
+                
+                rockets.forEach(rocket => {
+                    const dist = Math.hypot(rocket.x - this.x, rocket.y - this.y);
+                    if (dist < minDist && dist < 200) {
+                        minDist = dist;
+                        nearest = rocket;
+                    }
+                });
+                
+                return nearest;
+            }
+            
+            draw() {
+                // Draw trail
+                ctx.strokeStyle = 'rgba(255, 100, 0, 0.5)';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                for (let i = 0; i < this.trail.length; i++) {
+                    const point = this.trail[i];
+                    if (i === 0) {
+                        ctx.moveTo(point.x, point.y);
+                    } else {
+                        ctx.lineTo(point.x, point.y);
+                    }
+                }
+                ctx.stroke();
+                
+                // Draw missile body
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                
+                ctx.fillStyle = '#ff4444';
+                ctx.fillRect(-8, -3, 16, 6);
+                
+                ctx.fillStyle = '#ffff44';
+                ctx.beginPath();
+                ctx.moveTo(8, 0);
+                ctx.lineTo(12, -2);
+                ctx.lineTo(12, 2);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Exhaust
+                ctx.fillStyle = 'orange';
+                ctx.fillRect(-12, -2, 4, 4);
+                
+                ctx.restore();
+            }
+        }
+        
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 10;
+                this.vy = (Math.random() - 0.5) * 10;
+                this.life = 150;
+                this.maxLife = 150;
+                this.color = `hsl(${Math.random() * 360}, 100%, 70%)`;
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.1;
+                this.life--;
+            }
+            
+            draw() {
+                ctx.globalAlpha = this.life / this.maxLife;
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x - 2, this.y - 2, 4, 4);
+                ctx.globalAlpha = 1;
+            }
+        }
+        
+        function createFirework(x, y) {
+            for (let i = 0; i < 30; i++) {
+                fireworks.push(new Particle(x, y));
+            }
+            
+            const texts = ['Hello World', '太空飯盒'];
+            const randomText = texts[Math.floor(Math.random() * texts.length)];
+            
+            const textDuration = 180;
+            setTimeout(() => {
+                for (let frame = 0; frame < textDuration; frame++) {
+                    setTimeout(() => {
+                        ctx.font = 'bold 48px Arial';
+                        ctx.fillStyle = `hsl(${(frame * 2) % 360}, 100%, ${70 + Math.sin(frame * 0.1) * 20}%)`;
+                        ctx.strokeStyle = 'gold';
+                        ctx.lineWidth = 3;
+                        ctx.textAlign = 'center';
+                        ctx.strokeText(randomText, x, y - 50);
+                        ctx.fillText(randomText, x, y - 50);
+                    }, frame * 16);
+                }
+            }, 0);
+        }
+        
+        function activateMissileMode() {
+            missileMode = true;
+            missileModeTimer = 300; // 5 seconds at 60fps
+            playLunchboxSound();
+            
+            // Create text effect
+            setTimeout(() => {
+                for (let frame = 0; frame < 120; frame++) {
+                    setTimeout(() => {
+                        ctx.font = 'bold 36px Arial';
+                        ctx.fillStyle = `hsl(${(frame * 3) % 360}, 100%, 70%)`;
+                        ctx.strokeStyle = 'white';
+                        ctx.lineWidth = 2;
+                        ctx.textAlign = 'center';
+                        ctx.strokeText('MISSILE MODE ACTIVATED!', canvas.width/2, canvas.height/2 - 100);
+                        ctx.fillText('MISSILE MODE ACTIVATED!', canvas.width/2, canvas.height/2 - 100);
+                    }, frame * 16);
+                }
+            }, 0);
+        }
+        
+        function resetGame() {
+            rockets = [];
+            bullets = [];
+            fireworks = [];
+            lunchboxes = [];
+            missiles = [];
+            score = 0;
+            missedRockets = 0;
+            gameState = 'playing';
+            gameOverTime = 0;
+            gameTimer = 60;
+            gameStartTime = Date.now();
+            pausedTime = 0;
+            missileMode = false;
+            missileModeTimer = 0;
+        }
+        
+        function togglePause() {
+            if (gameState === 'playing') {
+                gameState = 'paused';
+                pausedTime = Date.now();
+            } else if (gameState === 'paused') {
+                gameState = 'playing';
+                gameStartTime += Date.now() - pausedTime;
+            }
+        }
+        
+        canvas.addEventListener('click', (e) => {
+            if (gameState === 'playing') {
+                initAudio();
+                bullets.push(new Bullet(e.clientX, e.clientY));
+                playShootSound();
+            }
+        });
+        
+        document.getElementById('pauseBtn').addEventListener('click', togglePause);
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'p' || e.key === 'P') {
+                togglePause();
+            }
+        });
+        
+	       const bgImg = new Image();
+	       bgImg.src = 'https://cdn.stocksnap.io/img-thumbs/960w/moon-craters_OHYSVCPGJK.jpg';
+
+
+        function gameLoop() {
+            ctx.fillStyle = 'rgba(0, 5, 15, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+
+	       const tmpImg = new Image();
+	       tmpImg.src = 'https://cdn.stocksnap.io/img-thumbs/960w/moon-craters_OHYSVCPGJK.jpg';
+	       tmpImg.onload = () =>{
+                             ctx.drawImage(bgImg, 0, 0,canvas.width, canvas.height);
+	      }
+                       
+
+            
+            // Animated particle background
+            const time = Date.now() * 0.001;
+            ctx.globalAlpha = 0.3;
+            
+            for (let i = 0; i < 50; i++) {
+                const x = (Math.sin(time * 0.5 + i * 0.5) * 200) + (canvas.width * 0.2) + (i * 15);
+                const y = (Math.cos(time * 0.3 + i * 0.3) * 150) + (canvas.height * 0.3) + (i * 10);
+                const size = Math.sin(time + i) * 2 + 3;
+                const hue = (time * 50 + i * 10) % 360;
+                ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
+                ctx.beginPath();
+                ctx.arc(x % canvas.width, y % canvas.height, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            ctx.globalAlpha = 1;
+            
+            if (gameState === 'playing') {
+                const elapsedTime = Math.floor((Date.now() - gameStartTime) / 1000);
+                gameTimer = Math.max(0, 60 - elapsedTime);
+                
+                if (gameTimer <= 0 && missedRockets < 10) {
+                    gameState = 'youwin';
+                    gameOverTime = Date.now();
+                }
+                
+                // Update missile mode timer
+                if (missileMode) {
+                    missileModeTimer--;
+                    if (missileModeTimer <= 0) {
+                        missileMode = false;
+                    }
+                    
+                    // Auto-launch missiles at rockets
+                    if (Math.random() < 0.1 && rockets.length > 0) {
+                        const targetRocket = rockets[Math.floor(Math.random() * rockets.length)];
+                        missiles.push(new Missile(targetRocket.x, targetRocket.y));
+                        playMissileSound();
+                    }
+                }
+                
+                // Spawn rockets
+                if (Math.random() < 0.02) {
+                    rockets.push(new Rocket());
+                }
+                
+                // Spawn lunchbox occasionally
+                if (Math.random() < 0.005) {
+                    lunchboxes.push(new Lunchbox());
+                }
+                
+                // Update rockets
+                for (let i = rockets.length - 1; i >= 0; i--) {
+                    const rocket = rockets[i];
+                    rocket.update();
+                    rocket.draw();
+                    
+                    if (rocket.y < -50) {
+                        rockets.splice(i, 1);
+                        missedRockets++;
+                        
+                        if (missedRockets >= 10) {
+                            gameState = 'gameover';
+                            gameOverTime = Date.now();
+                        }
+                    }
+                }
+                
+                // Update lunchboxes
+                for (let i = lunchboxes.length - 1; i >= 0; i--) {
+                    const lunchbox = lunchboxes[i];
+                    lunchbox.update();
+                    lunchbox.draw();
+                    
+                    if (lunchbox.y > canvas.height + 50) {
+                        lunchboxes.splice(i, 1);
+                    }
+                }
+                
+                // Update missiles
+                for (let i = missiles.length - 1; i >= 0; i--) {
+                    const missile = missiles[i];
+                    missile.update();
+                    missile.draw();
+                    
+                    if (missile.life <= 0 || missile.y < -50 || missile.x < -50 || missile.x > canvas.width + 50) {
+                        missiles.splice(i, 1);
+                        continue;
+                    }
+                    
+                    // Check missile-rocket collision
+                    for (let j = rockets.length - 1; j >= 0; j--) {
+                        const rocket = rockets[j];
+                        if (Math.hypot(missile.x - rocket.x, missile.y - rocket.y) < 30) {
+                            createFirework(rocket.x, rocket.y);
+                            playExplosionSound();
+                            rockets.splice(j, 1);
+                            missiles.splice(i, 1);
+                            score += 2; // Double points for missile hits
+                            break;
+                        }
+                    }
+                }
+                
+                // Update bullets
+                for (let i = bullets.length - 1; i >= 0; i--) {
+                    const bullet = bullets[i];
+                    bullet.update();
+                    bullet.draw();
+                    
+                    if (bullet.y < 0) {
+                        bullets.splice(i, 1);
+                        continue;
+                    }
+                    
+                    // Check bullet-rocket collision
+                    for (let j = rockets.length - 1; j >= 0; j--) {
+                        const rocket = rockets[j];
+                        if (Math.abs(bullet.x - rocket.x) < 25 && Math.abs(bullet.y - rocket.y) < 30) {
+                            createFirework(rocket.x, rocket.y);
+                            playExplosionSound();
+                            rockets.splice(j, 1);
+                            bullets.splice(i, 1);
+                            score++;
+                            break;
+                        }
+                    }
+                    
+                    // Check bullet-lunchbox collision
+                    for (let j = lunchboxes.length - 1; j >= 0; j--) {
+                        const lunchbox = lunchboxes[j];
+                        if (Math.hypot(bullet.x - lunchbox.x, bullet.y - lunchbox.y) < 25) {
+                            activateMissileMode();
+                            lunchboxes.splice(j, 1);
+                            bullets.splice(i, 1);
+                            score += 5; // Bonus points for lunchbox
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Update fireworks
+            for (let i = fireworks.length - 1; i >= 0; i--) {
+                const particle = fireworks[i];
+                particle.update();
+                particle.draw();
+                
+                if (particle.life <= 0) {
+                    fireworks.splice(i, 1);
+                }
+            }
+            
+            // Draw timer
+            ctx.font = 'bold 48px Arial';
+            ctx.fillStyle = gameTimer <= 10 ? 'red' : 'white';
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2;
+            ctx.textAlign = 'center';
+            ctx.strokeText(`${gameTimer}`, canvas.width/2, 60);
+            ctx.fillText(`${gameTimer}`, canvas.width/2, 60);
+            
+            // Draw UI
+            ctx.font = '24px Arial';
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Score: ${score}`, 10, canvas.height - 120);
+            ctx.fillText(`Missed: ${missedRockets}/10`, 10, canvas.height - 90);
+            
+            if (missileMode) {
+                ctx.fillStyle = 'lime';
+                ctx.fillText(`Missile Mode: ${Math.ceil(missileModeTimer / 60)}s`, 10, canvas.height - 60);
+            }
+            
+            // Game over screen
+            if (gameState === 'gameover') {
+                ctx.font = 'bold 72px Arial';
+                ctx.fillStyle = 'red';
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 4;
+                ctx.textAlign = 'center';
+                ctx.strokeText('GAME OVER', canvas.width/2, canvas.height/2);
+                ctx.fillText('GAME OVER', canvas.width/2, canvas.height/2);
+                
+                ctx.font = '32px Arial';
+                ctx.fillStyle = 'yellow';
+                const timeLeft = 10 - Math.floor((Date.now() - gameOverTime) / 1000);
+                ctx.fillText(`Restarting in ${timeLeft} seconds...`, canvas.width/2, canvas.height/2 + 80);
+                
+                if (Date.now() - gameOverTime > 10000) {
+                    resetGame();
+                }
+            }
+            
+            // Pause screen
+            if (gameState === 'paused') {
+                ctx.font = 'bold 72px Arial';
+                ctx.fillStyle = 'yellow';
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 4;
+                ctx.textAlign = 'center';
+                ctx.strokeText('PAUSED', canvas.width/2, canvas.height/2);
+                ctx.fillText('PAUSED', canvas.width/2, canvas.height/2);
+                
+                ctx.font = '32px Arial';
+                ctx.fillStyle = 'white';
+                ctx.fillText('Press P or click PAUSE to resume', canvas.width/2, canvas.height/2 + 60);
+            }
+            
+            // Win screen
+            if (gameState === 'youwin') {
+                ctx.font = 'bold 72px Arial';
+                ctx.fillStyle = 'gold';
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 4;
+                ctx.textAlign = 'center';
+                ctx.strokeText('YOU WIN!', canvas.width/2, canvas.height/2);
+                ctx.fillText('YOU WIN!', canvas.width/2, canvas.height/2);
+                
+                ctx.font = '32px Arial';
+                ctx.fillStyle = 'yellow';
+                const timeLeft = 10 - Math.floor((Date.now() - gameOverTime) / 1000);
+                ctx.fillText(`Restarting in ${timeLeft} seconds...`, canvas.width/2, canvas.height/2 + 80);
+                
+                if (Date.now() - gameOverTime > 10000) {
+                    resetGame();
+                }
+            }
+            
+            // Update pause button
+            const pauseBtn = document.getElementById('pauseBtn');
+            if (gameState === 'paused') {
+                pauseBtn.textContent = 'RESUME';
+                pauseBtn.style.background = '#FF9800';
+            } else {
+                pauseBtn.textContent = 'PAUSE';
+                pauseBtn.style.background = '#4CAF50';
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        gameLoop();
+        
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>

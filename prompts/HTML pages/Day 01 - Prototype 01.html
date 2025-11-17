@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Space Rocket Shooter</title>
+    <style>
+        body { margin: 0; padding: 0; background: #000; overflow: hidden; font-family: Arial; }
+        canvas { display: block; background: linear-gradient(to bottom, #001122, #000033); }
+        #info { position: absolute; top: 10px; left: 10px; color: white; z-index: 10; }
+    </style>
+</head>
+<body>
+    <div id="info">Click to shoot rockets! Hit them for fireworks!</div>
+    <canvas id="game"></canvas>
+    
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        let rockets = [];
+        let bullets = [];
+        let fireworks = [];
+        let score = 0;
+        
+        // Audio context for sound effects
+        let audioContext;
+        
+        // Initialize audio context on first user interaction
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        
+        // Create shooting sound effect
+        function playShootSound() {
+            if (!audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.type = 'square';
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.1);
+            
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+        
+        // Create explosion sound effect
+        function playExplosionSound() {
+            if (!audioContext) return;
+            
+            // Main explosion sound
+            const oscillator1 = audioContext.createOscillator();
+            const gainNode1 = audioContext.createGain();
+            
+            oscillator1.connect(gainNode1);
+            gainNode1.connect(audioContext.destination);
+            
+            oscillator1.type = 'sawtooth';
+            oscillator1.frequency.setValueAtTime(150, audioContext.currentTime);
+            oscillator1.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.3);
+            
+            gainNode1.gain.setValueAtTime(0.2, audioContext.currentTime);
+            gainNode1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            
+            oscillator1.start(audioContext.currentTime);
+            oscillator1.stop(audioContext.currentTime + 0.3);
+            
+            // High frequency sparkle sound
+            const oscillator2 = audioContext.createOscillator();
+            const gainNode2 = audioContext.createGain();
+            
+            oscillator2.connect(gainNode2);
+            gainNode2.connect(audioContext.destination);
+            
+            oscillator2.type = 'sine';
+            oscillator2.frequency.setValueAtTime(2000, audioContext.currentTime + 0.1);
+            oscillator2.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.4);
+            
+            gainNode2.gain.setValueAtTime(0.1, audioContext.currentTime + 0.1);
+            gainNode2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+            
+            oscillator2.start(audioContext.currentTime + 0.1);
+            oscillator2.stop(audioContext.currentTime + 0.4);
+        }
+        
+        // Create rocket image using base64
+        const rocketImage = new Image();
+        rocketImage.src = "data:image/svg+xml;base64," + btoa(`
+            <svg width="32" height="80" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="rocketGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:#ff6b6b"/>
+                        <stop offset="50%" style="stop-color:#4ecdc4"/>
+                        <stop offset="100%" style="stop-color:#45b7d1"/>
+                    </linearGradient>
+                    <linearGradient id="flameGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:#ff9500"/>
+                        <stop offset="50%" style="stop-color:#ff6b00"/>
+                        <stop offset="100%" style="stop-color:#ff0000"/>
+                    </linearGradient>
+                </defs>
+                <!-- Rocket body -->
+                <rect x="8" y="16" width="16" height="40" fill="url(#rocketGrad)" rx="4"/>
+                <!-- Rocket tip -->
+                <polygon points="16,0 8,16 24,16" fill="#ffd93d"/>
+                <!-- Rocket fins -->
+                <polygon points="4,44 8,36 8,56" fill="#666"/>
+                <polygon points="28,44 24,36 24,56" fill="#666"/>
+                <!-- Rocket flame -->
+                <polygon points="12,56 16,80 20,56" fill="url(#flameGrad)"/>
+                <!-- Window -->
+                <circle cx="16" cy="30" r="4" fill="#87ceeb"/>
+                <!-- Details -->
+                <rect x="10" y="20" width="12" height="2" fill="#fff" opacity="0.7"/>
+                <rect x="10" y="40" width="12" height="2" fill="#fff" opacity="0.7"/>
+            </svg>
+        `);
+        
+        // Rocket class
+        class Rocket {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = canvas.height;
+                this.vy = -2 - Math.random() * 3;
+                this.size = 16; // Increased hit box size
+                this.color = `hsl(${Math.random() * 360}, 70%, 50%)`;
+            }
+            
+            update() {
+                this.y += this.vy;
+            }
+            
+            draw() {
+                // Draw the bigger rocket image
+                if (rocketImage.complete) {
+                    ctx.drawImage(rocketImage, this.x - 16, this.y - 40, 32, 80);
+                } else {
+                    // Fallback to bigger original drawing if image not loaded
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(this.x - this.size/2, this.y - this.size, this.size, this.size * 2);
+                    ctx.fillStyle = 'orange';
+                    ctx.fillRect(this.x - 6, this.y + this.size, 12, 20);
+                }
+            }
+        }
+        
+        // Bullet class
+        class Bullet {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vy = -8;
+                this.size = 3;
+            }
+            
+            update() {
+                this.y += this.vy;
+            }
+            
+            draw() {
+                ctx.fillStyle = 'yellow';
+                ctx.fillRect(this.x - this.size/2, this.y - this.size/2, this.size, this.size);
+            }
+        }
+        
+        // Firework particle
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 10;
+                this.vy = (Math.random() - 0.5) * 10;
+                this.life = 150;
+                this.maxLife = 150;
+                this.color = `hsl(${Math.random() * 360}, 100%, 70%)`;
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.1; // gravity
+                this.life--;
+            }
+            
+            draw() {
+                ctx.globalAlpha = this.life / this.maxLife;
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x - 2, this.y - 2, 4, 4);
+                ctx.globalAlpha = 1;
+            }
+        }
+        
+        // Create firework explosion
+        function createFirework(x, y) {
+            for (let i = 0; i < 30; i++) {
+                fireworks.push(new Particle(x, y));
+            }
+            
+            // Randomly choose between the two texts
+            const texts = ['Hello World', '太空飯盒'];
+            const randomText = texts[Math.floor(Math.random() * texts.length)];
+            
+            // Show random text with longer duration
+            const textDuration = 180; // frames
+            setTimeout(() => {
+                for (let frame = 0; frame < textDuration; frame++) {
+                    setTimeout(() => {
+                        ctx.font = 'bold 48px Arial';
+                        ctx.fillStyle = `hsl(${(frame * 2) % 360}, 100%, ${70 + Math.sin(frame * 0.1) * 20}%)`;
+                        ctx.strokeStyle = 'gold';
+                        ctx.lineWidth = 3;
+                        ctx.textAlign = 'center';
+                        ctx.strokeText(randomText, x, y - 50);
+                        ctx.fillText(randomText, x, y - 50);
+                    }, frame * 16); // ~60fps
+                }
+            }, 0);
+        }
+        
+        // Mouse click to shoot
+        canvas.addEventListener('click', (e) => {
+            initAudio(); // Initialize audio on first click
+            bullets.push(new Bullet(e.clientX, e.clientY));
+            playShootSound(); // Play shoot sound
+        });
+        
+        // Game loop
+        function gameLoop() {
+            // Clear canvas
+            ctx.fillStyle = 'rgba(0, 5, 15, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Spawn rockets
+            if (Math.random() < 0.02) {
+                rockets.push(new Rocket());
+            }
+            
+            // Update and draw rockets
+            for (let i = rockets.length - 1; i >= 0; i--) {
+                const rocket = rockets[i];
+                rocket.update();
+                rocket.draw();
+                
+                if (rocket.y < -50) {
+                    rockets.splice(i, 1);
+                }
+            }
+            
+            // Update and draw bullets
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                bullet.update();
+                bullet.draw();
+                
+                if (bullet.y < 0) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
+                
+                // Check collision with rockets
+                for (let j = rockets.length - 1; j >= 0; j--) {
+                    const rocket = rockets[j];
+                    if (Math.abs(bullet.x - rocket.x) < 25 && 
+                        Math.abs(bullet.y - rocket.y) < 30) {
+                        createFirework(rocket.x, rocket.y);
+                        playExplosionSound(); // Play explosion sound
+                        rockets.splice(j, 1);
+                        bullets.splice(i, 1);
+                        score++;
+                        break;
+                    }
+                }
+            }
+            
+            // Update and draw firework particles
+            for (let i = fireworks.length - 1; i >= 0; i--) {
+                const particle = fireworks[i];
+                particle.update();
+                particle.draw();
+                
+                if (particle.life <= 0) {
+                    fireworks.splice(i, 1);
+                }
+            }
+            
+            // Draw score
+            ctx.font = '24px Arial';
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Score: ${score}`, 10, canvas.height - 20);
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Start game
+        gameLoop();
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>

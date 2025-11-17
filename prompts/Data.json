@@ -10,6 +10,9 @@
         ],
         "screenshot": [
             "https://static.wixstatic.com/media/0d7edc_d7a0946deab0401981c4ab2a7b5030b9~mv2.png"
+        ],
+        "game_link": [
+            "./HTML pages/Day 01 - Prototype 01.html"
         ]
     },
     {
@@ -21,7 +24,10 @@
         "video": [
             "https://youtu.be/JXB2l6StUxU"
         ],
-        "screenshot": []
+        "screenshot": [],
+        "game_link": [
+            "./HTML pages/Day 02 - Prototype 02.html"
+        ]
     },
     {
         "title": "Day 03 - Build foundation scene (Can't see the background image?)",
@@ -32,14 +38,18 @@
             "When adding a new background image, I found that the artifact in Claude Desktop could not display it. The error messages provided some help for debugging, but after several attempts, the background image still failed to show correctly. Eventually, I accidentally downloaded the file and opened it in Google Chrome, only to discover that the background image displayed normally."
         ],
         "video": [],
-        "screenshot": []
+        "screenshot": [],
+        "game_link": [
+            "./HTML pages/Day 03 - Build foundation scene .html"
+        ]
     },
     {
         "title": "Day 04 - Collaborate with AI and embark on a journey",
         "image": "04 AI team collaboration strategies - Claude.png",
         "note": [],
         "video": [],
-        "screenshot": []
+        "screenshot": [],
+        "game_link": []
     },
     {
         "title": "Day 05 - Build Super Weapon",
@@ -47,59 +57,103 @@
         "note": [
             "During the game testing, I noticed that when there were too many rockets on the screen, not all of them could be cleared. Eventually, I decided to create a special weapon, similar to an aurora cannon effect, to eliminate all the rockets on the screen. Throughout this process, the AI presented its ideas in a storyboard format, making our communication feel truly interactive.",
             "During the process, I requested the AI to create a conceptual prototype for me to understand the entire operation and its effects.",
-            "The Code architecture analysis helps us better understand the current structure of the source code, making the process of code integration smoother for me in the future."
+            "The Code architecture analysis helps us better understand the current structure of the source code, making the process of code integration smoother for me in the future.",
+            "<font color='red'>Press B to achivate Super Weapon!</font>"
         ],
         "video": [
             "https://youtu.be/kVosG53eTyE", 
             "https://youtu.be/lGfZSLLVUB0"
         ],
-        "screenshot": []
+        "screenshot": [],
+        "game_link": [
+            "./HTML pages/Day 05 - Build Super Weapon.html"
+        ]
     },
     {
         "title": "Day 06 - Build Spaceship",
         "image": "06 Spaceship game hit limit - Claude.png",
         "note": [
-            "The design and development of the player's spaceship appearance and operation methods."
+            "The design and development of the player's spaceship appearance and operation methods.",
+            "Avoid rocket collisions! (5 hits = Game Over)",
+            "<font color='red'>Controls: A = Rotate Left, D = Rotate Right, S = Reset Rotation</font>"
         ],
         "video": [
             "https://youtu.be/xFxbfnrPxd4"
         ],
         "screenshot": [
             "https://static.wixstatic.com/media/0d7edc_11f431eb1ad943108c107bf0a72d2f68~mv2.png"
+        ],
+        "game_link": [
+            "./HTML pages/Day 06 - Build Spaceship.html"
         ]
     },
     {
         "title": "Day 07 - Build Wingmen",
         "image": "07 Spaceship game with wingmen (Masked) - Claude.png",
-        "note": [],
+        "note": [
+            "Created Two small wingmen spaceships that follow the main ship."
+        ],
         "video": [
             "https://youtu.be/7hDe4rVAdSY",
             "https://youtu.be/aVy5DMO3Nec"
         ],
-        "screenshot": []
+        "screenshot": [],
+        "game_link": [
+            "./HTML pages/Day 07 - Build Wingmen.html"
+        ]
     },
     {
-        "title": "Day 08 - Sound effect and Background music control",
+        "title": "Day 08 - Enhance the Wingmen logic, Sound effect and Background music control",
         "image": "08 Space rock game mechanics - Claude.png",
-        "note": [],
+        "note": [
+            "Enhanced Wingmen formations. Press C to change formation",
+            " 1. V-Formation (Standard Fire)",
+            " 2. Line Formation (Rapid Fire)",
+            " 3. Front Guard (Spread Shot)",
+            " 4. undefined",
+            "Play Music or Mute music"
+        ],
         "video": [],
-        "screenshot": []
+        "screenshot": [],
+        "game_link": [
+            "./HTML pages/Day 08 - Sound effect and Background music control.html"
+        ]
     },
     {
         "title": "Day 09 - Implement Pages flow",
         "image": "09 Game source code enhancement - Claude.png",
-        "note": [],
+        "note": [
+            "<b>Game Flow</b>",
+            "1. Main Menu - Start game or view instruction",
+            "2. Instruction Screen - How to play guide",
+            "3. Playing - Active gameplay with level progression",
+            "4. Level Up Screen - Show stats and allows continuing to next level",
+            "5. Game Over Screen - Win or lose, shows final stats",
+            "6. Back to Main Menu - Full loop"
+
+        ],
         "video": [
             "https://youtu.be/fZ1Iq5I5nhM"
         ],
-        "screenshot": []
+        "screenshot": [],
+        "game_link": [
+            "./HTML pages/Day 09 - Implement Pages flow (crached).html"
+        ]
     },
     {
         "title": "Day 10 - Greeting Message and landing page",
         "image": "10 Generating happy greeting hashtags (Masked)  - Claude.png",
-        "note": [],
+        "note": [
+            "Added 20 happy greeting messages",
+            "Added a ascii art",
+            "Added 3 Game levels",
+            "Wingmen formation to have snake-like movement"
+        ],
         "video": [],
-        "screenshot": []
+        "screenshot": [],
+        "game_link": [
+            "./HTML pages/Day 10 - Greeting Message and landing page.html"
+        ]
     },
     {
         "title": "Day 11 - Add Debug Mode",
@@ -111,23 +165,50 @@
         "video": [
             "https://youtu.be/xXSXDVCQ2JI"
         ],
-        "screenshot": []
+        "screenshot": [],
+        "game_link": [
+            "./HTML pages/Day 11 - Add Debug Mode.html"
+        ]
     },
     {
         "title": "Day 12 - New Game Level implementation (4,5,6)  ",
         "image": "12 Game level design strategy (Masked) - Claude.png",
-        "note": [],
+        "note": [
+            "[1] Modified Wingmen formations. Press C to change formation",
+            "  <span style='margin-left:20px'>&nbsp</span> 1.1. V-Formation (Standard Fire)",
+            "  <span style='margin-left:20px'>&nbsp</span> 1.2. SNAKE TRAIL: Follow Mode!(Rapid Fire)", 
+            "  <span style='margin-left:20px'>&nbsp</span> 1.3. Front Guard (Spread Shot)",
+            "  <span style='margin-left:20px'>&nbsp</span> 1.4. ORBITAL: 360° Defense!",
+            "[2] Press V to deploy Turret (max 2)",
+            "[3] Press spacebar for Homing Wingmen"
+
+        ],
         "video": [],
         "screenshot": [
             "https://static.wixstatic.com/media/0d7edc_fcfe953c8a334eed8546c8296df5d244~mv2.png"
+        ],
+        "game_link": [
+            "./HTML pages/Day 12 - New Game Level implementation (4,5,6).html"
         ]
     },
     {
         "title": "Day 13 - Code Review",
         "image": "13 Code review and integration - Claude.png",
-        "note": [],
+        "note": [
+            "Code review and fact finding",
+            " <span style='margin-left:20px'>&nbsp</span> <b><u>Problem created and fixed by AI</u></b>",
+            " <span style='margin-left:20px'>&nbsp</span> 1. Magic Number",
+            " <span style='margin-left:20px'>&nbsp</span> 2. Global Variable Pollution",
+            " <span style='margin-left:20px'>&nbsp</span> 3. Collision Detection inefficiency",
+            " <span style='margin-left:20px'>&nbsp</span> 4. Memory Leak in Text Animation",
+            " <span style='margin-left:20px'>&nbsp</span> 5. Audio Context not close",
+            "New defensive Weapons/Power-Up "
+        ],
         "video": [],
-        "screenshot": []
+        "screenshot": [],
+        "game_link": [
+            "./HTML pages/Day 13 - Code Review.html"
+        ]
     },
     {
         "title": "Day 14 - New Game Level (8, 9 and 10) implementation",
@@ -137,6 +218,9 @@
         "screenshot": [
             "https://static.wixstatic.com/media/0d7edc_114ffc2e1c68433fa0a8f9c8d8c291ab~mv2.png",
             "https://static.wixstatic.com/media/0d7edc_445c0426332446dfa4a520762c96e2ab~mv2.png"
+        ],
+        "game_link": [
+            "./HTML pages/Day 14 - New Game Level (7, 8, 9 and 10).html"
         ]
     },
     {
@@ -146,33 +230,46 @@
             "Added VS Code Extension - Comment Anchor. It helps for code tracing and integration."
         ],
         "video": [],
-        "screenshot": []
+        "screenshot": [],
+        "game_link": [
+            "./HTML pages/Day 15 - Revise Game Rules.html"
+        ]
     },
     {
         "title": "Day 16 - Optimization Analysis (Rejected)",
         "image": "16 File optimization analysis - Claude.png",
         "note": [],
         "video": [],
-        "screenshot": []
+        "screenshot": [],
+        "game_link": [
+            "./HTML pages/Day 16 - Optimization Analysis (Rejected).html"
+        ]
     },
     {
         "title": "Day 17 - Integrity Verification",
         "image": "17 Integrity check - Claude.png",
         "note": [],
-        "video": [
-            "https://youtu.be/tcN8tySNyjQ?si=07OtMC3RGdQltlr7"
-        ],
-        "screenshot": []
+        "video": [],
+        "screenshot": [],
+        "game_link": []
     },
     {
         "title": "Day 18 - New Homing Wingman Weapon type",
         "image": "18 New Weapon (Anchor - Leaser Lock) - Claude.png",
-        "note": [],
+        "note": [
+            "New Homing Wingmen type - Laser Lock",
+            " <span style='margin-left:20px'>&nbsp</span> Press H to swap the homing types and then press spacebar to launch",
+            " <span style='margin-left:20px'>&nbsp</span> Type 1 (standard): chases and explodes on individual targets",
+            " <span style='margin-left:20px'>&nbsp</span> Type 2 (Laser Lock): Green colored, creates persistent lighting that damages multiple enemies along its path"
+        ],
         "video": [
             "https://youtu.be/dSdavuqvcIc"
         ],
         "screenshot": [
             "https://camo.githubusercontent.com/35d3ba21c25ce85c9ce32cb8d46434a86767da6b470207876243886ff828060d/68747470733a2f2f7374617469632e7769787374617469632e636f6d2f6d656469612f3064376564635f31313466666332653163363834333366613061386639633864386332393161627e6d76322e706e67"
+        ],
+        "game_link": [
+            "./HTML pages/Day 18 - New Homing Wingman Weapon type.html"
         ]
     }
 ]

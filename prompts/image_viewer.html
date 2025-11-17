@@ -443,6 +443,7 @@
             const hasNotes = imageData.note && imageData.note.length > 0;
             const hasVideos = imageData.video && imageData.video.length > 0;
             const hasScreenshots = imageData.screenshot && imageData.screenshot.length > 0;
+            const hasGameLinks = imageData.game_link && imageData.game_link.length > 0;
 
             if (!hasNotes && !hasVideos && !hasScreenshots) {
                 notesToggle.style.display = 'none';
@@ -463,7 +464,7 @@
             
             // Display videos
             if (hasVideos) {
-                html += '<h3>Videos:</h3><p>';
+                html += '<br><h3>Videos:</h3><p>';
                 imageData.video.forEach((videoUrl, index) => {
                     if (index > 0) html += ' | ';
                     html += `<a href="${videoUrl}" target="_blank">file ${index + 1}</a>`;
@@ -473,10 +474,20 @@
 
             // Display screenshots
             if (hasScreenshots) {
-                html += '<h3>Screenshots:</h3><p>';
+                html += '<br><h3>Screenshots:</h3><p>';
                 imageData.screenshot.forEach((screenshotUrl, index) => {
                     if (index > 0) html += ' | ';
                     html += `<a href="${screenshotUrl}" target="_blank">file ${index + 1}</a>`;
+                });
+                html += '</p>';
+            }
+
+            // Display Demo Games
+            if (hasGameLinks) {
+                html += '<br><h3>Games:</h3><p>';
+                imageData.game_link.forEach((gameUrl, index) => {
+                    if (index > 0) html += ' | ';
+                    html += `<a href="${gameUrl}" target="_blank">Play Game #${index + 1}</a>`;
                 });
                 html += '</p>';
             }
